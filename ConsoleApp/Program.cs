@@ -16,7 +16,7 @@ internal class Program
 {
     private static void Main(string[] args)
     {
-        string inputPath = "ConsoleApp/examples/20240614-_DSC3950.jpg";
+        string inputPath = "ConsoleApp/examples/alone-4480442.jpg";
         var imageData = Image.LoadImage(inputPath);
 
         NDArray mask = new Mask().GetMask(inputPath, 50);
