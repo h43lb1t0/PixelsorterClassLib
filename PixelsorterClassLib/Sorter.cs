@@ -81,6 +81,40 @@ public class Sorter
                         resultData[pixelOffset + 3] = pixel.A;
                 }
             });
+        } else
+        {
+            Parallel.For(0, width, x =>
+            {
+                var pixelBuffer = new PixelSortData[height];
+                int columnOffset = x * channels;
+                // Extract pixels from the column
+                for (int y = 0; y < height; y++)
+                {
+                    int pixelOffset = columnOffset + y * width * channels;
+                    byte r = sourceData[pixelOffset];
+                    byte g = sourceData[pixelOffset + 1];
+                    byte b = sourceData[pixelOffset + 2];
+                    byte a = channels > 3 ? sourceData[pixelOffset + 3] : (byte)255;
+                    var pixel = new Rgba32(r, g, b, a);
+                    float sortValue = sortingFunction(pixel);
+                    pixelBuffer[y] = new PixelSortData(r, g, b, a, sortValue);
+                }
+                // Sort the column
+                Array.Sort(pixelBuffer, 0, height);
+                // Write sorted pixels back to result
+                for (int y = 0; y < height; y++)
+                {
+                    int pixelOffset = columnOffset + y * width * channels;
+                    // If bottom-to-top, reverse the order by reading from the end
+                    int sourceIndex = sortDirections == SortDirections.ColumnBottomToTop ? height - 1 - y : y;
+                    ref var pixel = ref pixelBuffer[sourceIndex];
+                    resultData[pixelOffset] = pixel.R;
+                    resultData[pixelOffset + 1] = pixel.G;
+                    resultData[pixelOffset + 2] = pixel.B;
+                    if (channels > 3)
+                        resultData[pixelOffset + 3] = pixel.A;
+                }
+            });
         }
 
         // Create NDArray from the result data

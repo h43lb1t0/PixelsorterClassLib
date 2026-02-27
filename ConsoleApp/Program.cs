@@ -22,12 +22,17 @@ internal class Program
         foreach (var criterion in criteria)
         {
             Console.WriteLine($"Sorting by {criterion.Key}...");
-            var sortedData = Sorter.SortImage(imageData, criterion.Value, SortDirections.RowLeftToRight);
-            string outputPath = $"ConsoleApp/examples/output_{criterion.Key.ToLower()}_LTR.jpg";
-            Image.SaveImage(sortedData, outputPath);
-            sortedData = Sorter.SortImage(imageData, criterion.Value, SortDirections.RowRightToLeft);
-            outputPath = $"ConsoleApp/examples/output_{criterion.Key.ToLower()}_RTL.jpg";
-            Image.SaveImage(sortedData, outputPath);
+
+
+            foreach (var direction in Enum.GetValues(typeof(SortDirections)).Cast<SortDirections>())
+            {
+                Console.WriteLine($"  Sorting direction: {direction}...");
+                var sortedData = Sorter.SortImage(imageData, criterion.Value, direction);
+                string outputPath = $"ConsoleApp/examples/output_{criterion.Key.ToLower()}_{direction}.jpg";
+                Image.SaveImage(sortedData, outputPath);
+            }
+
+
         }
 
     }
