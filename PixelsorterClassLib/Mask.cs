@@ -232,7 +232,7 @@ namespace PixelsorterClassLib
         /// <returns>An SKBitmap containing the generated mask, with the same dimensions as the input bitmap.</returns>
         /// <exception cref="InvalidOperationException">Thrown when the input bitmap cannot be resized or if the output tensor from the model has an unexpected
         /// shape.</exception>
-        private SKBitmap CreateMask(SKBitmap inputBitmap, int fadeWidth = 15)
+        private SKBitmap CreateMask(SKBitmap inputBitmap, int fadeWidth)
         {
             ArgumentNullException.ThrowIfNull(inputBitmap);
 
@@ -291,10 +291,10 @@ namespace PixelsorterClassLib
         /// <param name="inputImagePath">The file path of the input image from which the mask will be generated. This must reference a valid image
         /// file.</param>
         /// <param name="fadeWidth">The width, in pixels, of the fade effect applied to the mask. Must be a non-negative integer. The default
-        /// value is 15.</param>
+        /// value is 30.</param>
         /// <returns>An NDArray containing the generated mask image.</returns>
         /// <exception cref="InvalidOperationException">Thrown if the input image cannot be loaded from the specified path.</exception>
-        public NDArray GetMask(String inputImagePath, int fadeWidth = 15)
+        public NDArray GetMask(String inputImagePath, int fadeWidth = 30)
         {
             using var inputBitmap = SKBitmap.Decode(inputImagePath) ?? throw new InvalidOperationException("Failed to load the input image.");
             LoadModel();
