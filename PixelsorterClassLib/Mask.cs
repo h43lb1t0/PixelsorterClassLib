@@ -269,7 +269,7 @@ namespace PixelsorterClassLib
                 {
                     float normalizedX = inputBitmap.Width > 1 ? x / (float)(inputBitmap.Width - 1) : 0f;
                     var maskValue = GetMaskValueBilinear(outputTensor, maskHeight, maskWidth, normalizedY, normalizedX, min, max);
-                    byte grayValue = maskValue > 0.5f ? (byte)255 : (byte)0;
+                    byte grayValue = maskValue < 0.5f ? (byte)255 : (byte)0;
                     maskBitmap.SetPixel(x, y, new SKColor(grayValue, grayValue, grayValue));
                 }
             }
