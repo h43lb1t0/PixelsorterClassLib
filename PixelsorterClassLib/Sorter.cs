@@ -4,6 +4,7 @@ using SixLabors.ImageSharp.PixelFormats;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace PixelsorterClassLib;
 
@@ -53,7 +54,14 @@ public class Sorter
             maskChannels = mask.shape[2];
         }
 
-        if (sortDirections == SortDirections.RowRightToLeft || sortDirections == SortDirections.RowLeftToRight)
+        if (sortDirections == SortDirections.IntoMask)
+        {
+            if (maskData is null)
+                throw new ArgumentException("A mask is required for IntoMask sorting.", nameof(mask));
+
+            ApplyRadialMaskSort(sourceData, resultData, width, height, channels, maskData, maskChannels, sortingFunction);
+        }
+        else if (sortDirections == SortDirections.RowRightToLeft || sortDirections == SortDirections.RowLeftToRight)
         {
             Parallel.For(0, height, y =>
             {
@@ -186,5 +194,139 @@ public class Sorter
         }
     }
 
-    
+    /// <summary>
+    /// Sorts pixels within the masked region along radial lines pointing toward the mask centroid.
+    /// </summary>
+    /// <param name="sourceData">Flattened source image byte array.</param>
+    /// <param name="resultData">Flattened destination byte array to write sorted pixels into.</param>
+    /// <param name="width">Image width in pixels.</param>
+    /// <param name="height">Image height in pixels.</param>
+    /// <param name="channels">Channel count of the image (e.g., 4 for RGBA).</param>
+    /// <param name="maskData">Flattened mask byte array.</param>
+    /// <param name="maskChannels">Channel count of the mask (1 or 4).</param>
+    /// <param name="sortingFunction">Function producing the sortable value from a pixel.</param>
+    private static void ApplyRadialMaskSort(byte[] sourceData, byte[] resultData, int width, int height, int channels, byte[] maskData, int maskChannels, Func<Rgba32, float> sortingFunction)
+    {
+        var (centerX, centerY) = GetMaskCentroid(maskData, width, height, maskChannels);
+
+        int angleBuckets = Math.Max(360, Math.Max(width, height));
+        var buckets = new List<(int X, int Y, double Dist)>[angleBuckets];
+        double cx = centerX + 0.5;
+        double cy = centerY + 0.5;
+
+        for (int i = 0; i < angleBuckets; i++)
+        {
+            buckets[i] = new List<(int X, int Y, double Dist)>();
+        }
+
+        for (int y = 0; y < height; y++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                double dx = x + 0.5 - cx;
+                double dy = y + 0.5 - cy;
+                double angle = Math.Atan2(dy, dx);
+                int bucket = (int)Math.Round(((angle + Math.PI) / (2 * Math.PI)) * (angleBuckets - 1));
+                double dist = dx * dx + dy * dy;
+                buckets[bucket].Add((x, y, dist));
+            }
+        }
+
+        var runOffsets = new List<int>();
+        var runPixels = new List<PixelSortData>();
+
+        void FlushRun()
+        {
+            if (runOffsets.Count <= 1)
+            {
+                runOffsets.Clear();
+                runPixels.Clear();
+                return;
+            }
+
+            var buffer = runPixels.ToArray();
+            Array.Sort(buffer, 0, buffer.Length);
+
+            for (int i = 0; i < runOffsets.Count; i++)
+            {
+                ref var pixel = ref buffer[i];
+                int pixelOffset = runOffsets[i];
+                resultData[pixelOffset] = pixel.R;
+                resultData[pixelOffset + 1] = pixel.G;
+                resultData[pixelOffset + 2] = pixel.B;
+                if (channels > 3) resultData[pixelOffset + 3] = pixel.A;
+            }
+
+            runOffsets.Clear();
+            runPixels.Clear();
+        }
+
+        foreach (var bucket in buckets)
+        {
+            if (bucket.Count == 0) continue;
+
+            bucket.Sort((a, b) => a.Dist.CompareTo(b.Dist));
+
+            var sequence = bucket.AsEnumerable().Reverse();
+
+            foreach (var point in sequence)
+            {
+                int maskIndex = (point.Y * width + point.X) * maskChannels;
+                bool insideMask = maskData[maskIndex] >= 128;
+
+                if (insideMask)
+                {
+                    int pixelOffset = (point.Y * width + point.X) * channels;
+                    byte r = sourceData[pixelOffset];
+                    byte g = sourceData[pixelOffset + 1];
+                    byte b = sourceData[pixelOffset + 2];
+                    byte a = channels > 3 ? sourceData[pixelOffset + 3] : (byte)255;
+                    runOffsets.Add(pixelOffset);
+                    runPixels.Add(new PixelSortData(r, g, b, a, sortingFunction(new Rgba32(r, g, b, a))));
+                }
+                else
+                {
+                    FlushRun();
+                }
+            }
+
+            FlushRun();
+        }
+    }
+
+    /// <summary>
+    /// Computes the centroid of the masked area, falling back to the image center if the mask is empty.
+    /// </summary>
+    /// <param name="maskData">Flattened mask byte array.</param>
+    /// <param name="width">Image width in pixels.</param>
+    /// <param name="height">Image height in pixels.</param>
+    /// <param name="maskChannels">Channel count of the mask (1 or 4).</param>
+    /// <returns>Centroid coordinates (x, y) within image bounds.</returns>
+    private static (int X, int Y) GetMaskCentroid(byte[] maskData, int width, int height, int maskChannels)
+    {
+        long sumX = 0;
+        long sumY = 0;
+        long count = 0;
+
+        for (int y = 0; y < height; y++)
+        {
+            int maskRowOffset = y * width * maskChannels;
+            for (int x = 0; x < width; x++)
+            {
+                if (maskData[maskRowOffset + x * maskChannels] >= 128)
+                {
+                    sumX += x;
+                    sumY += y;
+                    count++;
+                }
+            }
+        }
+
+        if (count == 0)
+        {
+            return (width / 2, height / 2);
+        }
+
+        return ((int)(sumX / count), (int)(sumY / count));
+    }
 }

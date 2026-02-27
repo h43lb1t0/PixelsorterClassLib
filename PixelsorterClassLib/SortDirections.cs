@@ -17,6 +17,7 @@ namespace PixelsorterClassLib
         RowLeftToRight,
         RowRightToLeft,
         ColumnTopToBottom,
-        ColumnBottomToTop
+        ColumnBottomToTop,
+        IntoMask
     }
 }
