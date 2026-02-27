@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="PixelsorterClassLib/PixelsorterClassLib.csproj" />
+  <Project Path="ConsoleApp/ConsoleApp.csproj" />
+</Solution>
