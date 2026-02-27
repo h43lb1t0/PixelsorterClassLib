@@ -1,6 +1,7 @@
 ﻿using Microsoft.ML.OnnxRuntime;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using SkiaSharp;
@@ -25,6 +26,13 @@ namespace PixelsorterClassLib
         private static string? _outputName;
         private static readonly object _sessionLock = new();
         private const int ModelInputSize = 1024;
+        private static readonly string ModelCachePath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "PixelsorterClassLib",
+            "Models",
+            "briaai",
+            "RMBG-1.4",
+            "model_quantized.onnx");
 
         /// <summary>
         /// Loads the ONNX model from a remote repository and initializes the inference session for model execution.
@@ -41,12 +49,27 @@ namespace PixelsorterClassLib
             {
                 if (_session != null) return;
 
-                var modelPath = HFDownloader.DownloadFileAsync(
-                    repoId: "briaai/RMBG-1.4",
-                    filename: "onnx/model_quantized.onnx"
-                ).GetAwaiter().GetResult();
+                Directory.CreateDirectory(Path.GetDirectoryName(ModelCachePath)!);
 
-                _session = new InferenceSession(modelPath);
+                if (!File.Exists(ModelCachePath))
+                {
+                    var downloadedPath = HFDownloader.DownloadFileAsync(
+                        repoId: "briaai/RMBG-1.4",
+                        filename: "onnx/model_quantized.onnx"
+                    ).GetAwaiter().GetResult();
+
+                    if (!File.Exists(downloadedPath))
+                    {
+                        throw new FileNotFoundException("Model download failed.", downloadedPath);
+                    }
+
+                    if (!string.Equals(downloadedPath, ModelCachePath, StringComparison.OrdinalIgnoreCase))
+                    {
+                        File.Copy(downloadedPath, ModelCachePath, overwrite: true);
+                    }
+                }
+
+                _session = new InferenceSession(ModelCachePath);
                 _inputName = _session.InputMetadata.Keys.First();
                 _outputName = _session.OutputMetadata.Keys.First();
             }
