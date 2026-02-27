@@ -26,25 +26,31 @@ public class Image
 		int height = image.Height;
 		int width = image.Width;
 
-		var array = np.zeros(new Shape(height, width, 4), NPTypeCode.Byte);
+		// Allocate flat byte array for direct access
+		var data = new byte[height * width * 4];
 
 		image.ProcessPixelRows(accessor =>
 		{
 			for (int y = 0; y < height; y++)
 			{
 				var rowSpan = accessor.GetRowSpan(y);
+				int rowOffset = y * width * 4;
+
 				for (int x = 0; x < width; x++)
 				{
 					var pixel = rowSpan[x];
-					array[y, x, 0] = pixel.R;
-					array[y, x, 1] = pixel.G;
-					array[y, x, 2] = pixel.B;
-					array[y, x, 3] = pixel.A;
+					int pixelOffset = rowOffset + x * 4;
+
+					data[pixelOffset] = pixel.R;
+					data[pixelOffset + 1] = pixel.G;
+					data[pixelOffset + 2] = pixel.B;
+					data[pixelOffset + 3] = pixel.A;
 				}
 			}
 		});
 
-		return array;
+		// Create NDArray from byte array and reshape to 3D
+		return np.array(data).reshape(new Shape(height, width, 4));
 	}
 
 	/// <summary>
@@ -58,6 +64,10 @@ public class Image
 		var shape = data.shape;
 		int height = shape[0];
 		int width = shape[1];
+		int channels = shape[2];
+
+		// Get direct access to the underlying data as byte array
+		var sourceData = data.ToArray<byte>();
 
 		using var image = new SixLabors.ImageSharp.Image<Rgba32>(width, height);
 
@@ -66,12 +76,16 @@ public class Image
 			for (int y = 0; y < height; y++)
 			{
 				var rowSpan = accessor.GetRowSpan(y);
+				int rowOffset = y * width * channels;
+
 				for (int x = 0; x < width; x++)
 				{
-					byte r = data[y, x, 0];
-					byte g = data[y, x, 1];
-					byte b = data[y, x, 2];
-					byte a = shape.Length > 2 && shape[2] > 3 ? (byte)data[y, x, 3] : (byte)255;
+					int pixelOffset = rowOffset + x * channels;
+
+					byte r = sourceData[pixelOffset];
+					byte g = sourceData[pixelOffset + 1];
+					byte b = sourceData[pixelOffset + 2];
+					byte a = channels > 3 ? sourceData[pixelOffset + 3] : (byte)255;
 
 					rowSpan[x] = new Rgba32(r, g, b, a);
 				}
