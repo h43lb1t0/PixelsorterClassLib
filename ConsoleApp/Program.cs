@@ -22,8 +22,11 @@ internal class Program
         foreach (var criterion in criteria)
         {
             Console.WriteLine($"Sorting by {criterion.Key}...");
-            var sortedData = Sorter.SortImage(imageData, criterion.Value);
-            string outputPath = $"ConsoleApp/examples/output_{criterion.Key.ToLower()}.jpg";
+            var sortedData = Sorter.SortImage(imageData, criterion.Value, SortDirections.RowLeftToRight);
+            string outputPath = $"ConsoleApp/examples/output_{criterion.Key.ToLower()}_LTR.jpg";
+            Image.SaveImage(sortedData, outputPath);
+            sortedData = Sorter.SortImage(imageData, criterion.Value, SortDirections.RowRightToLeft);
+            outputPath = $"ConsoleApp/examples/output_{criterion.Key.ToLower()}_RTL.jpg";
             Image.SaveImage(sortedData, outputPath);
         }
 

@@ -24,7 +24,7 @@ public class Sorter
     /// <param name="imageData">3D NumSharp array representing the image (height x width x channels)</param>
     /// <param name="sortingFunction">Function that extracts a comparable value from a pixel</param>
     /// <returns>Sorted image as a 3D NumSharp array</returns>
-    public static NDArray SortImage(NDArray imageData, Func<Rgba32, float> sortingFunction)
+    public static NDArray SortImage(NDArray imageData, Func<Rgba32, float> sortingFunction, SortDirections sortDirections)
     {
         var shape = imageData.shape;
         int height = shape[0];
@@ -35,45 +35,53 @@ public class Sorter
         var sourceData = imageData.ToArray<byte>();
         var resultData = new byte[sourceData.Length];
 
-        // Process rows in parallel for significant performance boost
-        Parallel.For(0, height, y =>
+        if (sortDirections == SortDirections.RowRightToLeft || sortDirections == SortDirections.RowLeftToRight)
         {
-            // Each thread gets its own buffer to avoid race conditions
-            var pixelBuffer = new PixelSortData[width];
-            int rowOffset = y * width * channels;
 
-            // Extract pixels from the row
-            for (int x = 0; x < width; x++)
+
+            // Process rows in parallel for significant performance boost
+            Parallel.For(0, height, y =>
             {
-                int pixelOffset = rowOffset + x * channels;
+                // Each thread gets its own buffer to avoid race conditions
+                var pixelBuffer = new PixelSortData[width];
+                int rowOffset = y * width * channels;
 
-                byte r = sourceData[pixelOffset];
-                byte g = sourceData[pixelOffset + 1];
-                byte b = sourceData[pixelOffset + 2];
-                byte a = channels > 3 ? sourceData[pixelOffset + 3] : (byte)255;
+                // Extract pixels from the row
+                for (int x = 0; x < width; x++)
+                {
+                    int pixelOffset = rowOffset + x * channels;
 
-                var pixel = new Rgba32(r, g, b, a);
-                float sortValue = sortingFunction(pixel);
+                    byte r = sourceData[pixelOffset];
+                    byte g = sourceData[pixelOffset + 1];
+                    byte b = sourceData[pixelOffset + 2];
+                    byte a = channels > 3 ? sourceData[pixelOffset + 3] : (byte)255;
 
-                pixelBuffer[x] = new PixelSortData(r, g, b, a, sortValue);
-            }
+                    var pixel = new Rgba32(r, g, b, a);
+                    float sortValue = sortingFunction(pixel);
 
-            // Sort using Array.Sort which is faster than LINQ OrderBy
-            Array.Sort(pixelBuffer, 0, width);
+                    pixelBuffer[x] = new PixelSortData(r, g, b, a, sortValue);
+                }
 
-            // Write sorted pixels back to result
-            for (int x = 0; x < width; x++)
-            {
-                int pixelOffset = rowOffset + x * channels;
-                ref var pixel = ref pixelBuffer[x];
+                // Sort using Array.Sort which is faster than LINQ OrderBy
+                Array.Sort(pixelBuffer, 0, width);
 
-                resultData[pixelOffset] = pixel.R;
-                resultData[pixelOffset + 1] = pixel.G;
-                resultData[pixelOffset + 2] = pixel.B;
-                if (channels > 3)
-                    resultData[pixelOffset + 3] = pixel.A;
-            }
-        });
+                // Write sorted pixels back to result
+                for (int x = 0; x < width; x++)
+                {
+                    int pixelOffset = rowOffset + x * channels;
+
+                    // If right-to-left, reverse the order by reading from the end
+                    int sourceIndex = sortDirections == SortDirections.RowRightToLeft ? width - 1 - x : x;
+                    ref var pixel = ref pixelBuffer[sourceIndex];
+
+                    resultData[pixelOffset] = pixel.R;
+                    resultData[pixelOffset + 1] = pixel.G;
+                    resultData[pixelOffset + 2] = pixel.B;
+                    if (channels > 3)
+                        resultData[pixelOffset + 3] = pixel.A;
+                }
+            });
+        }
 
         // Create NDArray from the result data
         var result = np.array(resultData).reshape(shape);
