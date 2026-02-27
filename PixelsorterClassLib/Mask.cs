@@ -20,9 +20,10 @@ namespace PixelsorterClassLib
     /// model inference.</remarks>
     public class Mask
     {
-        private InferenceSession? _session;
-        private string? _inputName;
-        private string? _outputName;
+        private static InferenceSession? _session;
+        private static string? _inputName;
+        private static string? _outputName;
+        private static readonly object _sessionLock = new();
         private const int ModelInputSize = 1024;
 
         /// <summary>
@@ -34,14 +35,21 @@ namespace PixelsorterClassLib
         /// session.</remarks>
         private void LoadModel()
         {
-            var modelPath = HFDownloader.DownloadFileAsync(
-                repoId: "briaai/RMBG-1.4",
-                filename: "onnx/model_quantized.onnx"
-            ).GetAwaiter().GetResult();
-            _session = new InferenceSession(modelPath);
+            if (_session != null) return;
 
-            _inputName = _session.InputMetadata.Keys.First();
-            _outputName = _session.OutputMetadata.Keys.First();
+            lock (_sessionLock)
+            {
+                if (_session != null) return;
+
+                var modelPath = HFDownloader.DownloadFileAsync(
+                    repoId: "briaai/RMBG-1.4",
+                    filename: "onnx/model_quantized.onnx"
+                ).GetAwaiter().GetResult();
+
+                _session = new InferenceSession(modelPath);
+                _inputName = _session.InputMetadata.Keys.First();
+                _outputName = _session.OutputMetadata.Keys.First();
+            }
         }
 
         /// <summary>
@@ -57,12 +65,15 @@ namespace PixelsorterClassLib
         private DenseTensor<float> ExtractPixels(SKBitmap bitmap)
         {
             var tensor = new DenseTensor<float>(new[] { 1, 3, ModelInputSize, ModelInputSize });
+            var pixmap = bitmap.PeekPixels() ?? throw new InvalidOperationException("Unable to access bitmap pixels.");
+
+            var pixels = pixmap.GetPixelSpan<SKColor>();
             for (int y = 0; y < ModelInputSize; y++)
             {
+                int rowOffset = y * ModelInputSize;
                 for (int x = 0; x < ModelInputSize; x++)
                 {
-                    var color = bitmap.GetPixel(x, y);
-                    // Normalization (RMBG-1.4 uses mean=[0.5,0.5,0.5], std=[1.0,1.0,1.0])
+                    var color = pixels[rowOffset + x];
                     tensor[0, 0, y, x] = color.Red / 255f - 0.5f;
                     tensor[0, 1, y, x] = color.Green / 255f - 0.5f;
                     tensor[0, 2, y, x] = color.Blue / 255f - 0.5f;
@@ -193,6 +204,17 @@ namespace PixelsorterClassLib
 
             var output = new SKBitmap(new SKImageInfo(bitmap.Width, bitmap.Height, SKColorType.Gray8, SKAlphaType.Opaque));
 
+            var originalPixmap = bitmap.PeekPixels() ?? throw new InvalidOperationException("Unable to access mask pixels.");
+            var blurredPixmap = finalMask.PeekPixels() ?? throw new InvalidOperationException("Unable to access blurred mask pixels.");
+            var outputPixmap = output.PeekPixels() ?? throw new InvalidOperationException("Unable to access output mask pixels.");
+
+            var originalSpan = originalPixmap.GetPixelSpan<byte>();
+            var blurredSpan = blurredPixmap.GetPixelSpan<byte>();
+            var outputSpan = outputPixmap.GetPixelSpan<byte>();
+            int originalRowBytes = originalPixmap.RowBytes;
+            int blurredRowBytes = blurredPixmap.RowBytes;
+            int outputRowBytes = outputPixmap.RowBytes;
+
             int[,] bayerMatrix = new int[4, 4]
             {
                 {  0,  8,  2, 10 },
@@ -203,16 +225,19 @@ namespace PixelsorterClassLib
 
             for (int y = 0; y < bitmap.Height; y++)
             {
+                int originalRow = y * originalRowBytes;
+                int blurredRow = y * blurredRowBytes;
+                int outputRow = y * outputRowBytes;
                 for (int x = 0; x < bitmap.Width; x++)
                 {
-                    float originalMaskValue = bitmap.GetPixel(x, y).Red / 255f;
-                    float blurredMaskValue = finalMask.GetPixel(x, y).Red / 255f;
+                    float originalMaskValue = originalSpan[originalRow + x] / 255f;
+                    float blurredMaskValue = blurredSpan[blurredRow + x] / 255f;
                     float maskValue = Math.Max(originalMaskValue, blurredMaskValue);
 
                     float threshold = bayerMatrix[y % 4, x % 4] / 16f;
 
                     byte maskColor = maskValue > threshold ? (byte)255 : (byte)0;
-                    output.SetPixel(x, y, new SKColor(maskColor, maskColor, maskColor));
+                    outputSpan[outputRow + x] = maskColor;
                 }
             }
 
@@ -262,15 +287,21 @@ namespace PixelsorterClassLib
 
             var maskBitmap = new SKBitmap(new SKImageInfo(inputBitmap.Width, inputBitmap.Height, SKColorType.Gray8, SKAlphaType.Opaque));
 
+            var maskPixmap = maskBitmap.PeekPixels() ?? throw new InvalidOperationException("Unable to access mask pixels.");
+
+            var maskSpan = maskPixmap.GetPixelSpan<byte>();
+            int maskRowBytes = maskPixmap.RowBytes;
+
             for (int y = 0; y < inputBitmap.Height; y++)
             {
+                int maskRow = y * maskRowBytes;
                 float normalizedY = inputBitmap.Height > 1 ? y / (float)(inputBitmap.Height - 1) : 0f;
                 for (int x = 0; x < inputBitmap.Width; x++)
                 {
                     float normalizedX = inputBitmap.Width > 1 ? x / (float)(inputBitmap.Width - 1) : 0f;
                     var maskValue = GetMaskValueBilinear(outputTensor, maskHeight, maskWidth, normalizedY, normalizedX, min, max);
                     byte grayValue = maskValue < 0.5f ? (byte)255 : (byte)0;
-                    maskBitmap.SetPixel(x, y, new SKColor(grayValue, grayValue, grayValue));
+                    maskSpan[maskRow + x] = grayValue;
                 }
             }
 
@@ -299,13 +330,17 @@ namespace PixelsorterClassLib
             using var inputBitmap = SKBitmap.Decode(inputImagePath) ?? throw new InvalidOperationException("Failed to load the input image.");
             LoadModel();
             SKBitmap mask = CreateMask(inputBitmap, fadeWidth);
-            using (var outStream = File.OpenWrite("mask.png"))
-            {
-                mask.Encode(outStream, SKEncodedImageFormat.Png, 100);
-            }
-            var img = Image.LoadImage("mask.png");
-            File.Delete("mask.png");
-            return img;
+            return ConvertMaskToNdArray(mask);
+        }
+
+        private static NDArray ConvertMaskToNdArray(SKBitmap mask)
+        {
+            var pixmap = mask.PeekPixels() ?? throw new InvalidOperationException("Unable to access mask pixels.");
+            var span = pixmap.GetPixelSpan<byte>();
+
+            // Mask is Gray8, so one channel. Create NDArray with shape [height, width, 1]
+            var data = span.ToArray();
+            return np.array(data).reshape(new Shape(mask.Height, mask.Width, 1));
         }
     }
 }

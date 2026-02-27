@@ -1,4 +1,5 @@
-﻿using PixelsorterClassLib;
+﻿using NumSharp;
+using PixelsorterClassLib;
 using SixLabors.ImageSharp.PixelFormats;
 using System.ComponentModel;
 
@@ -18,9 +19,10 @@ internal class Program
         string inputPath = "ConsoleApp/examples/alone-4480442.jpg";
         var imageData = Image.LoadImage(inputPath);
 
+        NDArray mask = new Mask().GetMask(inputPath, 200);
+        Image.SaveImage(mask, "ConsoleApp/examples/mask.png");
 
-
-        var sortedData = Sorter.SortImage(imageData, SortBy.Saturation(), SortDirections.RowLeftToRight, new Mask().GetMask(inputPath));
+        var sortedData = Sorter.SortImage(imageData, SortBy.Warmth(), SortDirections.RowLeftToRight, mask);
         string outputPath = $"ConsoleApp/examples/output.jpg";
         Image.SaveImage(sortedData, outputPath);
 
