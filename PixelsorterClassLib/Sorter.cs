@@ -3,6 +3,7 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace PixelsorterClassLib;
 
@@ -30,38 +31,79 @@ public class Sorter
         int width = shape[1];
         int channels = shape[2];
 
-        var result = np.zeros(shape, dtype: typeof(byte));
+        // Get direct access to the underlying data as byte array
+        var sourceData = imageData.ToArray<byte>();
+        var resultData = new byte[sourceData.Length];
 
-        for (int y = 0; y < height; y++)
+        // Process rows in parallel for significant performance boost
+        Parallel.For(0, height, y =>
         {
-            var pixels = new (Rgba32 pixel, float sortValue)[width];
+            // Each thread gets its own buffer to avoid race conditions
+            var pixelBuffer = new PixelSortData[width];
+            int rowOffset = y * width * channels;
 
+            // Extract pixels from the row
             for (int x = 0; x < width; x++)
             {
-                byte r = imageData[y, x, 0];
-                byte g = imageData[y, x, 1];
-                byte b = imageData[y, x, 2];
-                byte a = channels > 3 ? (byte)imageData[y, x, 3] : (byte)255;
+                int pixelOffset = rowOffset + x * channels;
+
+                byte r = sourceData[pixelOffset];
+                byte g = sourceData[pixelOffset + 1];
+                byte b = sourceData[pixelOffset + 2];
+                byte a = channels > 3 ? sourceData[pixelOffset + 3] : (byte)255;
 
                 var pixel = new Rgba32(r, g, b, a);
                 float sortValue = sortingFunction(pixel);
-                pixels[x] = (pixel, sortValue);
+
+                pixelBuffer[x] = new PixelSortData(r, g, b, a, sortValue);
             }
 
-            var sortedPixels = pixels.OrderBy(p => p.sortValue).ToArray();
+            // Sort using Array.Sort which is faster than LINQ OrderBy
+            Array.Sort(pixelBuffer, 0, width);
 
+            // Write sorted pixels back to result
             for (int x = 0; x < width; x++)
             {
-                var pixel = sortedPixels[x].pixel;
-                result[y, x, 0] = pixel.R;
-                result[y, x, 1] = pixel.G;
-                result[y, x, 2] = pixel.B;
+                int pixelOffset = rowOffset + x * channels;
+                ref var pixel = ref pixelBuffer[x];
+
+                resultData[pixelOffset] = pixel.R;
+                resultData[pixelOffset + 1] = pixel.G;
+                resultData[pixelOffset + 2] = pixel.B;
                 if (channels > 3)
-                    result[y, x, 3] = pixel.A;
+                    resultData[pixelOffset + 3] = pixel.A;
             }
+        });
+
+        // Create NDArray from the result data
+        var result = np.array(resultData).reshape(shape);
+        return result;
+    }
+
+    /// <summary>
+    /// Struct to hold pixel data and sort value for efficient sorting
+    /// </summary>
+    private readonly struct PixelSortData : IComparable<PixelSortData>
+    {
+        public readonly byte R;
+        public readonly byte G;
+        public readonly byte B;
+        public readonly byte A;
+        public readonly float SortValue;
+
+        public PixelSortData(byte r, byte g, byte b, byte a, float sortValue)
+        {
+            R = r;
+            G = g;
+            B = b;
+            A = a;
+            SortValue = sortValue;
         }
 
-        return result;
+        public int CompareTo(PixelSortData other)
+        {
+            return SortValue.CompareTo(other.SortValue);
+        }
     }
 
     
