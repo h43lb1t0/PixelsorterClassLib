@@ -18,7 +18,7 @@ namespace PixelsorterClassLib
     /// masks. It requires an input image path and can apply a fade effect to the edges of the generated mask. The model
     /// input size is fixed at 1024x1024 pixels, and the class handles image normalization and tensor extraction for
     /// model inference.</remarks>
-    internal class Mask
+    public class Mask
     {
         private InferenceSession? _session;
         private string? _inputName;
@@ -183,15 +183,15 @@ namespace PixelsorterClassLib
         /// bitmap's borders.</param>
         /// <returns>A new SKBitmap containing the original image with faded edges, where the alpha channel is adjusted to create
         /// a smooth transition.</returns>
-        private SKBitmap FadeEgdes(SKBitmap bitmap, SKBitmap original, int fadeWidth)
+        private SKBitmap FadeEgdes(SKBitmap bitmap, int fadeWidth)
         {
-            SKBitmap finalMask = new SKBitmap(new SKImageInfo(original.Width, original.Height, SKColorType.Gray8, SKAlphaType.Opaque));
+            SKBitmap finalMask = new SKBitmap(new SKImageInfo(bitmap.Width, bitmap.Height, SKColorType.Gray8, SKAlphaType.Opaque));
             using var canvas = new SKCanvas(finalMask);
             using var paint = new SKPaint();
             paint.ImageFilter = SKImageFilter.CreateBlur(fadeWidth, fadeWidth);
             canvas.DrawBitmap(bitmap, 0, 0, paint);
 
-            var output = new SKBitmap(new SKImageInfo(original.Width, original.Height, SKColorType.Rgba8888, SKAlphaType.Unpremul));
+            var output = new SKBitmap(new SKImageInfo(bitmap.Width, bitmap.Height, SKColorType.Gray8, SKAlphaType.Opaque));
 
             int[,] bayerMatrix = new int[4, 4]
             {
@@ -211,9 +211,8 @@ namespace PixelsorterClassLib
 
                     float threshold = bayerMatrix[y % 4, x % 4] / 16f;
 
-                    var source = original.GetPixel(x, y);
-                    var alpha = maskValue > threshold ? (byte)255 : (byte)0;
-                    output.SetPixel(x, y, new SKColor(source.Red, source.Green, source.Blue, alpha));
+                    byte maskColor = maskValue > threshold ? (byte)255 : (byte)0;
+                    output.SetPixel(x, y, new SKColor(maskColor, maskColor, maskColor));
                 }
             }
 
@@ -270,14 +269,14 @@ namespace PixelsorterClassLib
                 {
                     float normalizedX = inputBitmap.Width > 1 ? x / (float)(inputBitmap.Width - 1) : 0f;
                     var maskValue = GetMaskValueBilinear(outputTensor, maskHeight, maskWidth, normalizedY, normalizedX, min, max);
-                    byte grayValue = (byte)Math.Clamp(maskValue * 255, 0, 255);
+                    byte grayValue = maskValue > 0.5f ? (byte)255 : (byte)0;
                     maskBitmap.SetPixel(x, y, new SKColor(grayValue, grayValue, grayValue));
                 }
             }
 
             if (fadeWidth > 0)
             {
-                return FadeEgdes(maskBitmap, inputBitmap, fadeWidth);
+                return FadeEgdes(maskBitmap, fadeWidth);
             }
 
             return maskBitmap;
@@ -300,8 +299,10 @@ namespace PixelsorterClassLib
             using var inputBitmap = SKBitmap.Decode(inputImagePath) ?? throw new InvalidOperationException("Failed to load the input image.");
             LoadModel();
             SKBitmap mask = CreateMask(inputBitmap, fadeWidth);
-            using var outStream = File.OpenWrite("mask.png");
-            mask.Encode(outStream, SKEncodedImageFormat.Png, 100);
+            using (var outStream = File.OpenWrite("mask.png"))
+            {
+                mask.Encode(outStream, SKEncodedImageFormat.Png, 100);
+            }
             var img = Image.LoadImage("mask.png");
             File.Delete("mask.png");
             return img;
