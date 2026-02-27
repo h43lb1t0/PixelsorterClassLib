@@ -82,10 +82,30 @@ public class Image
 				{
 					int pixelOffset = rowOffset + x * channels;
 
-					byte r = sourceData[pixelOffset];
-					byte g = sourceData[pixelOffset + 1];
-					byte b = sourceData[pixelOffset + 2];
-					byte a = channels > 3 ? sourceData[pixelOffset + 3] : (byte)255;
+					byte r;
+					byte g;
+					byte b;
+					byte a = 255;
+
+					if (channels >= 3)
+					{
+						r = sourceData[pixelOffset];
+						g = sourceData[pixelOffset + 1];
+						b = sourceData[pixelOffset + 2];
+						if (channels > 3)
+						{
+							a = sourceData[pixelOffset + 3];
+						}
+					}
+					else if (channels == 1)
+					{
+						byte gray = sourceData[pixelOffset];
+						r = g = b = gray;
+					}
+					else
+					{
+						throw new InvalidOperationException($"Unsupported channel count: {channels}");
+					}
 
 					rowSpan[x] = new Rgba32(r, g, b, a);
 				}

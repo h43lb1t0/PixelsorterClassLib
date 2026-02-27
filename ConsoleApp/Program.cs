@@ -1,5 +1,7 @@
-﻿using PixelsorterClassLib;
+﻿using NumSharp;
+using PixelsorterClassLib;
 using SixLabors.ImageSharp.PixelFormats;
+using System.ComponentModel;
 
 /// <summary>
 /// Provides the entry point for the application, orchestrating the process of loading an image, applying multiple
@@ -14,8 +16,22 @@ internal class Program
 {
     private static void Main(string[] args)
     {
-        string inputPath = "ConsoleApp/examples/alone-4480442.jpg";
+        string inputPath = "ConsoleApp/examples/20240614-_DSC3950.jpg";
         var imageData = Image.LoadImage(inputPath);
+
+        NDArray mask = new Mask().GetMask(inputPath, 50);
+        /*
+        Image.SaveImage(mask, "ConsoleApp/examples/mask.png");
+
+        var sortedData = Sorter.SortImage(imageData, SortBy.Warmth(), SortDirections.RowLeftToRight, mask);
+        string outputPath = $"ConsoleApp/examples/output.jpg";
+        Image.SaveImage(sortedData, outputPath);
+
+        sortedData = Sorter.SortImage(imageData, SortBy.Saturation(), SortDirections.RowLeftToRight);
+        outputPath = $"ConsoleApp/examples/output2.jpg";
+        Image.SaveImage(sortedData, outputPath);
+        */
+
 
         Dictionary<string, Func<Rgba32, float>> criteria = SortBy.GetAllSortingCriteria();
 
@@ -27,7 +43,7 @@ internal class Program
             foreach (var direction in Enum.GetValues(typeof(SortDirections)).Cast<SortDirections>())
             {
                 Console.WriteLine($"  Sorting direction: {direction}...");
-                var sortedData = Sorter.SortImage(imageData, criterion.Value, direction);
+                var sortedData = Sorter.SortImage(imageData, criterion.Value, direction, mask);
                 string outputPath = $"ConsoleApp/examples/output_{criterion.Key.ToLower()}_{direction}.jpg";
                 Image.SaveImage(sortedData, outputPath);
             }
