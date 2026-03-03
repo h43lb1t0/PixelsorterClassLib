@@ -3,6 +3,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using SkiaSharp;
 using HuggingfaceHub;
@@ -69,7 +71,16 @@ namespace PixelsorterClassLib
                     }
                 }
 
-                _session = new InferenceSession(ModelCachePath);
+                var options = new SessionOptions
+                {
+                    GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL,
+                    ExecutionMode = ExecutionMode.ORT_SEQUENTIAL,
+                    EnableMemoryPattern = false,
+                    InterOpNumThreads = 1,
+                    IntraOpNumThreads = Math.Max(1, Environment.ProcessorCount - 1)
+                };
+
+                _session = new InferenceSession(ModelCachePath, options);
                 _inputName = _session.InputMetadata.Keys.First();
                 _outputName = _session.OutputMetadata.Keys.First();
             }
@@ -284,7 +295,7 @@ namespace PixelsorterClassLib
         {
             ArgumentNullException.ThrowIfNull(inputBitmap);
 
-            var resizedBitmap = inputBitmap.Resize(new SKImageInfo(ModelInputSize, ModelInputSize), new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.Linear)) ?? throw new InvalidOperationException("Failed to resize the input bitmap.");
+            using var resizedBitmap = inputBitmap.Resize(new SKImageInfo(ModelInputSize, ModelInputSize), new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.Linear)) ?? throw new InvalidOperationException("Failed to resize the input bitmap.");
 
             var inputTensor = ExtractPixels(resizedBitmap);
 
@@ -352,8 +363,29 @@ namespace PixelsorterClassLib
         {
             using var inputBitmap = SKBitmap.Decode(inputImagePath) ?? throw new InvalidOperationException("Failed to load the input image.");
             LoadModel();
-            SKBitmap mask = CreateMask(inputBitmap, fadeWidth);
+            using var mask = CreateMask(inputBitmap, fadeWidth);
             return ConvertMaskToNdArray(mask);
+        }
+
+        /// <summary>
+        /// Asynchronously generates a mask image from the specified input image and returns it as an NDArray.
+        /// </summary>
+        /// <param name="inputImagePath">Path to the image file to process.</param>
+        /// <param name="fadeWidth">Fade width in pixels applied to the mask edges.</param>
+        /// <param name="cancellationToken">Token to cancel the work.</param>
+        /// <returns>A task returning the generated mask as an NDArray.</returns>
+        public Task<NDArray> GetMaskAsync(string inputImagePath, int fadeWidth = 30, CancellationToken cancellationToken = default)
+        {
+            return Task.Run(() =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                using var inputBitmap = SKBitmap.Decode(inputImagePath) ?? throw new InvalidOperationException("Failed to load the input image.");
+                cancellationToken.ThrowIfCancellationRequested();
+                LoadModel();
+                cancellationToken.ThrowIfCancellationRequested();
+                using var mask = CreateMask(inputBitmap, fadeWidth);
+                return ConvertMaskToNdArray(mask);
+            }, cancellationToken);
         }
 
         private static NDArray ConvertMaskToNdArray(SKBitmap mask)
