@@ -2,6 +2,7 @@
 using NumSharp;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
+using System.IO;
 
 namespace PixelsorterClassLib;
 
@@ -53,66 +54,83 @@ public class Image
 		return np.array(data).reshape(new Shape(height, width, 4));
 	}
 
-	/// <summary>
-	/// Saves a 3D NumSharp array (height x width x channels) as an image file at the specified path. 
-	/// The method should handle the conversion from the NumSharp array format back to an image format and support various output formats based on the file extension provided in the path.
-	/// </summary>
-	/// <param name="data"></param>
-	/// <param name="path"></param>
-	public static void SaveImage(NDArray data, string path)
+
+	public static Image<Rgba32> NdarrayToImgData(NDArray data)
 	{
-		var shape = data.shape;
-		int height = shape[0];
-		int width = shape[1];
-		int channels = shape[2];
+        var shape = data.shape;
+        int height = shape[0];
+        int width = shape[1];
+        int channels = shape[2];
 
-		// Get direct access to the underlying data as byte array
-		var sourceData = data.ToArray<byte>();
+        var sourceData = data.ToArray<byte>();
 
-		using var image = new SixLabors.ImageSharp.Image<Rgba32>(width, height);
+        var image = new SixLabors.ImageSharp.Image<Rgba32>(width, height);
 
-		image.ProcessPixelRows(accessor =>
+        image.ProcessPixelRows(accessor =>
+        {
+            for (int y = 0; y < height; y++)
+            {
+                var rowSpan = accessor.GetRowSpan(y);
+                int rowOffset = y * width * channels;
+
+                for (int x = 0; x < width; x++)
+                {
+                    int pixelOffset = rowOffset + x * channels;
+
+                    byte r;
+                    byte g;
+                    byte b;
+                    byte a = 255;
+
+                    if (channels >= 3)
+                    {
+                        r = sourceData[pixelOffset];
+                        g = sourceData[pixelOffset + 1];
+                        b = sourceData[pixelOffset + 2];
+                        if (channels > 3)
+                        {
+                            a = sourceData[pixelOffset + 3];
+                        }
+                    }
+                    else if (channels == 1)
+                    {
+                        byte gray = sourceData[pixelOffset];
+                        r = g = b = gray;
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException($"Unsupported channel count: {channels}");
+                    }
+
+                    rowSpan[x] = new Rgba32(r, g, b, a);
+                }
+            }
+        });
+
+        return image;
+    }
+
+    /// <summary>
+    /// Saves a 3D NumSharp array (height x width x channels) as an image file at the specified path. 
+    /// The method should handle the conversion from the NumSharp array format back to an image format and support various output formats based on the file extension provided in the path.
+    /// </summary>
+    /// <param name="data"></param>
+    /// <param name="path"></param>
+    public static void SaveImage(NDArray data, string path)
+	{
+		
+
+		var directory = Path.GetDirectoryName(path);
+		if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
 		{
-			for (int y = 0; y < height; y++)
-			{
-				var rowSpan = accessor.GetRowSpan(y);
-				int rowOffset = y * width * channels;
+			Directory.CreateDirectory(directory);
+		}
 
-				for (int x = 0; x < width; x++)
-				{
-					int pixelOffset = rowOffset + x * channels;
+		using var image = NdarrayToImgData(data);
 
-					byte r;
-					byte g;
-					byte b;
-					byte a = 255;
-
-					if (channels >= 3)
-					{
-						r = sourceData[pixelOffset];
-						g = sourceData[pixelOffset + 1];
-						b = sourceData[pixelOffset + 2];
-						if (channels > 3)
-						{
-							a = sourceData[pixelOffset + 3];
-						}
-					}
-					else if (channels == 1)
-					{
-						byte gray = sourceData[pixelOffset];
-						r = g = b = gray;
-					}
-					else
-					{
-						throw new InvalidOperationException($"Unsupported channel count: {channels}");
-					}
-
-					rowSpan[x] = new Rgba32(r, g, b, a);
-				}
-			}
-		});
-
-		image.Save(path);
+		using var outputStream = File.Open(path, FileMode.Create, FileAccess.Write, FileShare.None);
+		image.SaveAsPng(outputStream);
+		outputStream.Flush(true);
 	}
 }
 
