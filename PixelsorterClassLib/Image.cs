@@ -1,8 +1,6 @@
-﻿using System;
-using NumSharp;
+﻿using NumSharp;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
-using System.IO;
 
 namespace PixelsorterClassLib;
 
@@ -15,48 +13,48 @@ namespace PixelsorterClassLib;
 public class Image
 {
 
-	/// <summary>
-	/// Loads an image from the specified file path and returns it as a 3D NumSharp array (height x width x channels). 
-	/// The method should handle various image formats and convert them to a consistent format (e.g., RGBA) for processing.
-	/// </summary>
-	/// <param name="path"></param>
-	/// <returns></returns>
-	public static NDArray LoadImage(string path)
-	{
-		using var image = SixLabors.ImageSharp.Image.Load<Rgba32>(path);
-		int height = image.Height;
-		int width = image.Width;
+    /// <summary>
+    /// Loads an image from the specified file path and returns it as a 3D NumSharp array (height x width x channels). 
+    /// The method should handle various image formats and convert them to a consistent format (e.g., RGBA) for processing.
+    /// </summary>
+    /// <param name="path"></param>
+    /// <returns></returns>
+    public static NDArray LoadImage(string path)
+    {
+        using var image = SixLabors.ImageSharp.Image.Load<Rgba32>(path);
+        int height = image.Height;
+        int width = image.Width;
 
-		// Allocate flat byte array for direct access
-		var data = new byte[height * width * 4];
+        // Allocate flat byte array for direct access
+        var data = new byte[height * width * 4];
 
-		image.ProcessPixelRows(accessor =>
-		{
-			for (int y = 0; y < height; y++)
-			{
-				var rowSpan = accessor.GetRowSpan(y);
-				int rowOffset = y * width * 4;
+        image.ProcessPixelRows(accessor =>
+        {
+            for (int y = 0; y < height; y++)
+            {
+                var rowSpan = accessor.GetRowSpan(y);
+                int rowOffset = y * width * 4;
 
-				for (int x = 0; x < width; x++)
-				{
-					var pixel = rowSpan[x];
-					int pixelOffset = rowOffset + x * 4;
+                for (int x = 0; x < width; x++)
+                {
+                    var pixel = rowSpan[x];
+                    int pixelOffset = rowOffset + x * 4;
 
-					data[pixelOffset] = pixel.R;
-					data[pixelOffset + 1] = pixel.G;
-					data[pixelOffset + 2] = pixel.B;
-					data[pixelOffset + 3] = pixel.A;
-				}
-			}
-		});
+                    data[pixelOffset] = pixel.R;
+                    data[pixelOffset + 1] = pixel.G;
+                    data[pixelOffset + 2] = pixel.B;
+                    data[pixelOffset + 3] = pixel.A;
+                }
+            }
+        });
 
-		// Create NDArray from byte array and reshape to 3D
-		return np.array(data).reshape(new Shape(height, width, 4));
-	}
+        // Create NDArray from byte array and reshape to 3D
+        return np.array(data).reshape(new Shape(height, width, 4));
+    }
 
 
-	public static Image<Rgba32> NdarrayToImgData(NDArray data)
-	{
+    public static Image<Rgba32> NdarrayToImgData(NDArray data)
+    {
         var shape = data.shape;
         int height = shape[0];
         int width = shape[1];
@@ -117,20 +115,20 @@ public class Image
     /// <param name="data"></param>
     /// <param name="path"></param>
     public static void SaveImage(NDArray data, string path)
-	{
-		
+    {
 
-		var directory = Path.GetDirectoryName(path);
-		if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-		{
-			Directory.CreateDirectory(directory);
-		}
 
-		using var image = NdarrayToImgData(data);
+        var directory = Path.GetDirectoryName(path);
+        if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
 
-		using var outputStream = File.Open(path, FileMode.Create, FileAccess.Write, FileShare.None);
-		image.SaveAsPng(outputStream);
-		outputStream.Flush(true);
-	}
+        using var image = NdarrayToImgData(data);
+
+        using var outputStream = File.Open(path, FileMode.Create, FileAccess.Write, FileShare.None);
+        image.SaveAsPng(outputStream);
+        outputStream.Flush(true);
+    }
 }
 

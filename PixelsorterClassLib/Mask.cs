@@ -1,19 +1,13 @@
-﻿using Microsoft.ML.OnnxRuntime;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
+﻿using HuggingfaceHub;
+using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
-using SkiaSharp;
-using HuggingfaceHub;
 using NumSharp;
+using SkiaSharp;
 
 
 namespace PixelsorterClassLib
 {
- 
+
     /// <summary>
     /// Provides functionality to generate a mask from an input image using a pre-trained model.
     /// </summary>
@@ -116,7 +110,7 @@ namespace PixelsorterClassLib
             return tensor;
         }
 
-     
+
         /// <summary>
         /// Determines the minimum and maximum values contained within the specified mask tensor.
         /// </summary>
@@ -314,7 +308,7 @@ namespace PixelsorterClassLib
                 throw new InvalidOperationException("Unexpected mask tensor shape.");
             }
 
-            int maskWidth = dimensions[rank -1];
+            int maskWidth = dimensions[rank - 1];
             int maskHeight = dimensions[rank - 2];
 
             var (min, max) = GetMaskRange(outputTensor);

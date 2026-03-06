@@ -1,10 +1,6 @@
 ﻿using NumSharp;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
-using System.Collections.Generic;
 
 namespace PixelsorterClassLib;
 
