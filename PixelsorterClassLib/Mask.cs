@@ -285,7 +285,7 @@ namespace PixelsorterClassLib
         /// <returns>An SKBitmap containing the generated mask, with the same dimensions as the input bitmap.</returns>
         /// <exception cref="InvalidOperationException">Thrown when the input bitmap cannot be resized or if the output tensor from the model has an unexpected
         /// shape.</exception>
-        private SKBitmap CreateMask(SKBitmap inputBitmap, int fadeWidth, bool invert)
+          private (SKBitmap mask, SKBitmap invertedMask) CreateMask(SKBitmap inputBitmap, int fadeWidth)
         {
             ArgumentNullException.ThrowIfNull(inputBitmap);
 
@@ -314,35 +314,41 @@ namespace PixelsorterClassLib
             var (min, max) = GetMaskRange(outputTensor);
 
             var maskBitmap = new SKBitmap(new SKImageInfo(inputBitmap.Width, inputBitmap.Height, SKColorType.Gray8, SKAlphaType.Opaque));
+            var invertedMaskBitmap = new SKBitmap(new SKImageInfo(inputBitmap.Width, inputBitmap.Height, SKColorType.Gray8, SKAlphaType.Opaque));
 
             var maskPixmap = maskBitmap.PeekPixels() ?? throw new InvalidOperationException("Unable to access mask pixels.");
+            var invertedMaskPixmap = invertedMaskBitmap.PeekPixels() ?? throw new InvalidOperationException("Unable to access inverted mask pixels.");
 
             var maskSpan = maskPixmap.GetPixelSpan<byte>();
+            var invertedMaskSpan = invertedMaskPixmap.GetPixelSpan<byte>();
             int maskRowBytes = maskPixmap.RowBytes;
+            int invertedMaskRowBytes = invertedMaskPixmap.RowBytes;
 
             for (int y = 0; y < inputBitmap.Height; y++)
             {
                 int maskRow = y * maskRowBytes;
+                int invertedMaskRow = y * invertedMaskRowBytes;
                 float normalizedY = inputBitmap.Height > 1 ? y / (float)(inputBitmap.Height - 1) : 0f;
                 for (int x = 0; x < inputBitmap.Width; x++)
                 {
                     float normalizedX = inputBitmap.Width > 1 ? x / (float)(inputBitmap.Width - 1) : 0f;
                     var maskValue = GetMaskValueBilinear(outputTensor, maskHeight, maskWidth, normalizedY, normalizedX, min, max);
-                    if (invert)
-                    {
-                        maskValue = 1f - maskValue;
-                    }
                     byte grayValue = maskValue < 0.5f ? (byte)255 : (byte)0;
                     maskSpan[maskRow + x] = grayValue;
+                    invertedMaskSpan[invertedMaskRow + x] = grayValue == 255 ? (byte)0 : (byte)255;
                 }
             }
 
             if (fadeWidth > 0)
             {
-                return FadeEgdes(maskBitmap, fadeWidth);
+                var fadedMask = FadeEgdes(maskBitmap, fadeWidth);
+                var fadedInvertedMask = FadeEgdes(invertedMaskBitmap, fadeWidth);
+                maskBitmap.Dispose();
+                invertedMaskBitmap.Dispose();
+                return (fadedMask, fadedInvertedMask);
             }
 
-            return maskBitmap;
+            return (maskBitmap, invertedMaskBitmap);
 
         }
 
@@ -357,12 +363,12 @@ namespace PixelsorterClassLib
         /// value is 30.</param>
         /// <returns>An NDArray containing the generated mask image.</returns>
         /// <exception cref="InvalidOperationException">Thrown if the input image cannot be loaded from the specified path.</exception>
-        public NDArray GetMask(String inputImagePath, int fadeWidth = 30, bool invert = false)
+        public (NDArray mask, NDArray invertMask) GetMask(String inputImagePath, int fadeWidth = 30, bool invert = false)
         {
             using var inputBitmap = SKBitmap.Decode(inputImagePath) ?? throw new InvalidOperationException("Failed to load the input image.");
             LoadModel();
-            using var mask = CreateMask(inputBitmap, fadeWidth, invert);
-            return ConvertMaskToNdArray(mask);
+            (var mask, var invertmask) = CreateMask(inputBitmap, fadeWidth);
+            return (ConvertMaskToNdArray(mask), ConvertMaskToNdArray(invertmask));
         }
 
         /// <summary>
@@ -372,7 +378,7 @@ namespace PixelsorterClassLib
         /// <param name="fadeWidth">Fade width in pixels applied to the mask edges.</param>
         /// <param name="cancellationToken">Token to cancel the work.</param>
         /// <returns>A task returning the generated mask as an NDArray.</returns>
-        public Task<NDArray> GetMaskAsync(string inputImagePath, int fadeWidth = 30, bool invert = false, CancellationToken cancellationToken = default)
+        public Task<(NDArray mask, NDArray invertMask)> GetMaskAsync(string inputImagePath, int fadeWidth = 30, bool invert = false, CancellationToken cancellationToken = default)
         {
             return Task.Run(() =>
             {
@@ -381,8 +387,8 @@ namespace PixelsorterClassLib
                 cancellationToken.ThrowIfCancellationRequested();
                 LoadModel();
                 cancellationToken.ThrowIfCancellationRequested();
-                using var mask = CreateMask(inputBitmap, fadeWidth, invert);
-                return ConvertMaskToNdArray(mask);
+                (var mask, var invertmask) = CreateMask(inputBitmap, fadeWidth);
+                return (ConvertMaskToNdArray(mask), ConvertMaskToNdArray(invertmask));
             }, cancellationToken);
         }
 
