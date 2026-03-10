@@ -45,7 +45,7 @@ namespace PixelsorterClassLib
         /// already exist. It checks if the model has already been downloaded before attempting to download it
         /// again.</remarks>
         /// <exception cref="FileNotFoundException">Thrown if the model download fails and the downloaded file does not exist at the expected path.</exception>
-        public async void DownloadModel()
+        public async Task<bool> DownloadModel()
         {
             if (!IsModelDownloaded)
             {
@@ -65,6 +65,7 @@ namespace PixelsorterClassLib
                     File.Copy(downloadedPath, ModelCachePath, overwrite: true);
                 }
             }
+            return true;
         }
 
         
@@ -81,7 +82,7 @@ namespace PixelsorterClassLib
             {
                 if (_session != null) return;
 
-                this.DownloadModel();
+                _ = DownloadModel();
 
                 var options = new SessionOptions
                 {
