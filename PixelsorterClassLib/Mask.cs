@@ -31,12 +31,48 @@ namespace PixelsorterClassLib
             "model_quantized.onnx");
 
         /// <summary>
-        /// Loads the ONNX model from a remote repository and initializes the inference session for model execution.
+        /// Gets a value indicating whether the model has been downloaded and is available in the cache.
         /// </summary>
-        /// <remarks>This method downloads the model file asynchronously and sets up the input and output
-        /// names required for inference. Ensure that network connectivity is available and the repository is accessible
-        /// before calling this method. The method must be called before performing inference operations with the
-        /// session.</remarks>
+        /// <remarks>This property checks for the existence of the model file at the specified cache path.
+        /// If the file exists, it indicates that the model has been successfully downloaded and cached for
+        /// use.</remarks>
+        public bool IsModelDownloaded => File.Exists(ModelCachePath);
+
+        /// <summary>
+        /// Downloads the model file from a remote repository and caches it locally if it has not been downloaded yet.
+        /// </summary>
+        /// <remarks>This method creates the necessary directory for caching the model if it does not
+        /// already exist. It checks if the model has already been downloaded before attempting to download it
+        /// again.</remarks>
+        /// <exception cref="FileNotFoundException">Thrown if the model download fails and the downloaded file does not exist at the expected path.</exception>
+        public async void DownloadModel()
+        {
+            if (!IsModelDownloaded)
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(ModelCachePath)!);
+                var downloadedPath = await HFDownloader.DownloadFileAsync(
+                    repoId: "briaai/RMBG-1.4",
+                    filename: "onnx/model_quantized.onnx"
+                );
+
+                if (!File.Exists(downloadedPath))
+                {
+                    throw new FileNotFoundException("Model download failed.", downloadedPath);
+                }
+
+                if (!string.Equals(downloadedPath, ModelCachePath, StringComparison.OrdinalIgnoreCase))
+                {
+                    File.Copy(downloadedPath, ModelCachePath, overwrite: true);
+                }
+            }
+        }
+
+        
+        /// <summary>
+        /// Initializes the inference session for the model if it has not already been loaded.
+        /// </summary>
+        /// <remarks>This method ensures that the model is downloaded and the session is created with
+        /// optimized settings. It is thread-safe and uses a lock to prevent multiple initializations.</remarks>
         private void LoadModel()
         {
             if (_session != null) return;
@@ -45,25 +81,7 @@ namespace PixelsorterClassLib
             {
                 if (_session != null) return;
 
-                Directory.CreateDirectory(Path.GetDirectoryName(ModelCachePath)!);
-
-                if (!File.Exists(ModelCachePath))
-                {
-                    var downloadedPath = HFDownloader.DownloadFileAsync(
-                        repoId: "briaai/RMBG-1.4",
-                        filename: "onnx/model_quantized.onnx"
-                    ).GetAwaiter().GetResult();
-
-                    if (!File.Exists(downloadedPath))
-                    {
-                        throw new FileNotFoundException("Model download failed.", downloadedPath);
-                    }
-
-                    if (!string.Equals(downloadedPath, ModelCachePath, StringComparison.OrdinalIgnoreCase))
-                    {
-                        File.Copy(downloadedPath, ModelCachePath, overwrite: true);
-                    }
-                }
+                this.DownloadModel();
 
                 var options = new SessionOptions
                 {
