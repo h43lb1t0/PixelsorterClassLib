@@ -16,11 +16,12 @@ internal class Program
 {
     private static void Main(string[] args)
     {
+        /*
         string inputPath = "ConsoleApp/examples/alone-4480442.jpg";
         var imageData = Image.LoadImage(inputPath);
 
-        NDArray mask = new Mask().GetMask(inputPath, 50);
-        /*
+        var mask = new Mask().GetMask(inputPath, 50);
+        
         Image.SaveImage(mask, "ConsoleApp/examples/mask.png");
 
         var sortedData = Sorter.SortImage(imageData, SortBy.Warmth(), SortDirections.RowLeftToRight, mask);
@@ -30,7 +31,6 @@ internal class Program
         sortedData = Sorter.SortImage(imageData, SortBy.Saturation(), SortDirections.RowLeftToRight);
         outputPath = $"ConsoleApp/examples/output2.jpg";
         Image.SaveImage(sortedData, outputPath);
-        */
 
 
         Dictionary<string, Func<Rgba32, float>> criteria = SortBy.GetAllSortingCriteria();
@@ -50,6 +50,8 @@ internal class Program
 
 
         }
+
+    */
 
     }
 }
