@@ -12,7 +12,7 @@ namespace Pixelsorter.Tests.ImageTests
 
         public static string CreateTestImage(String ext, int chanels)
         {
-            String path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"test_image{ext}");
+            String path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"test_image_{Guid.NewGuid()}{ext}");
             switch (chanels)
             {
                 case 1:
@@ -31,7 +31,7 @@ namespace Pixelsorter.Tests.ImageTests
 
         public static String CreateCoruptedImage(String ext)
         {
-            String path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"corrupted_image{ext}");
+            String path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"corrupted_image_{Guid.NewGuid()}{ext}");
             using var image = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32>(24, 24);
             image.Save(path);
             // Corrupt the file by writing random bytes
@@ -43,7 +43,7 @@ namespace Pixelsorter.Tests.ImageTests
 
         public static String CreateTestImageWithAlpha(String ext)
         {
-            String path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"test_image_alpha{ext}");
+            String path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"test_image_alpha_{Guid.NewGuid()}{ext}");
             using (var image = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32>(24, 24)) image.Save(path);
             return path;
         }
