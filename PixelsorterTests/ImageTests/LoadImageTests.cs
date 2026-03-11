@@ -32,5 +32,61 @@ namespace Pixelsorter.Tests.ImageTests
             }
             return data;
         }
+
+        public static TheoryData<string> GetExtensions()
+        {
+            var data = new TheoryData<string>();
+            foreach (var ext in ImageTestHelpers.FileExtensions)
+            {
+                data.Add(ext);
+            }
+            return data;
+        }
+
+        [Fact]
+        public void LoadImage_ShouldThrowOnCorruptedFile()
+        {
+            string path = ImageTestHelpers.CreateCoruptedImage(".png");
+            try
+            {
+                Assert.ThrowsAny<Exception>(() => PixelsorterClassLib.Image.LoadImage(path));
+            }
+            finally
+            {
+                if (File.Exists(path)) File.Delete(path);
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(GetExtensions))]
+        public void LoadImage_WithAlpha_ShouldLoadSuccessfully(string extension)
+        {
+            string path = ImageTestHelpers.CreateTestImageWithAlpha(extension);
+            try
+            {
+                var image = PixelsorterClassLib.Image.LoadImage(path);
+                Assert.NotNull(image);
+            }
+            finally
+            {
+                if (File.Exists(path)) File.Delete(path);
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(GetExtensions))]
+        public void LoadImage_Grayscale_ShouldLoadSuccessfully(string extension)
+        {
+            string path = ImageTestHelpers.CreateGrayscaleTestImage(extension);
+            try
+            {
+                var image = PixelsorterClassLib.Image.LoadImage(path);
+                Assert.NotNull(image);
+            }
+            finally
+            {
+                if (File.Exists(path)) File.Delete(path);
+            }
+        }
     }
 }

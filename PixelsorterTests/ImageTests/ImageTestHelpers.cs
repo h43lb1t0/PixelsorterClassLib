@@ -40,5 +40,19 @@ namespace Pixelsorter.Tests.ImageTests
             System.IO.File.WriteAllBytes(path, randomData);
             return path;
         }
+
+        public static String CreateTestImageWithAlpha(String ext)
+        {
+            String path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"test_image_alpha{ext}");
+            using (var image = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32>(24, 24)) image.Save(path);
+            return path;
+        }
+
+        public static String CreateGrayscaleTestImage(String ext)
+        {
+            String path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"test_image_grayscale{ext}");
+            using (var image = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.L8>(24, 24)) image.Save(path);
+            return path;
+        }
     }
 }
