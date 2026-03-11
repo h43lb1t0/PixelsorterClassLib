@@ -1,4 +1,5 @@
 <Solution>
-  <Project Path="PixelsorterClassLib/PixelsorterClassLib.csproj" />
   <Project Path="ConsoleApp/ConsoleApp.csproj" />
+  <Project Path="PixelsorterClassLib/PixelsorterClassLib.csproj" />
+  <Project Path="PixelsorterTests/Pixelsorter.Tests.csproj" Id="8d3817c0-83f4-477e-bf15-513f2d19212d" />
 </Solution>

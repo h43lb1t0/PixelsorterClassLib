@@ -19,6 +19,7 @@ Fixes # (issue)
 
 Please describe the tests that you ran to verify your changes. Provide instructions so we can reproduce.
 
+- [ ] Tested with Unit Tests (Required)
 - [ ] Tested with ConsoleApp output
 - [ ] Test B
 

@@ -29,6 +29,7 @@ First off, thank you for considering contributing to PixelsorterClassLib! It's p
 - Follow standard C# coding conventions.
 - Keep the code clean, and use XML comments for public members (methods, classes) as done currently in the codebase.
 - Ensure any added features do not break existing sorting methods or masking logic.
+- Write unit tests for any new functionality you add, and ensure all existing tests pass before submitting a Pull Request.
 
 ## Dependencies
 - If adding new dependencies is absolutely necessary, please prefer those with **MIT** or **Apache 2.0** licenses.
