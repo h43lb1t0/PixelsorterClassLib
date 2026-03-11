@@ -364,3 +364,4 @@ FodyWeavers.xsd
 
 # Output files
 ConsoleApp/examples/output_*
+/.github/copilot-instructions.md
