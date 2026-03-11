@@ -54,5 +54,17 @@ namespace Pixelsorter.Tests.SortBy
             var result = PixelsorterClassLib.SortBy.Lightness()(pixels);
             Assert.Equal(0f, result);
         }
+
+        [Fact]
+        public void SortBy_GetAllSortingCriteria_ReturnsAllCriteria()
+        {
+            var criteria = PixelsorterClassLib.SortBy.GetAllSortingCriteria();
+            Assert.Contains("Brightness", criteria);
+            Assert.Contains("Hue", criteria);
+            Assert.Contains("Saturation", criteria);
+            Assert.Contains("Warmth", criteria);
+            Assert.Contains("Coolness", criteria);
+            Assert.Contains("Lightness", criteria);
+        }
     }
 }
