@@ -2,7 +2,9 @@
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using NumSharp;
-using SkiaSharp;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 
 
 namespace PixelsorterClassLib
@@ -105,27 +107,28 @@ namespace PixelsorterClassLib
         /// <remarks>This method assumes the input bitmap is not null and has the required dimensions.
         /// Pixel values are normalized using a mean of 0.5 and a standard deviation of 1.0 for each channel, matching
         /// the expected input format for certain models.</remarks>
-        /// <param name="bitmap">The SKBitmap instance containing the image data to be processed. The bitmap must have dimensions equal to
+        /// <param name="bitmap">The image instance containing the image data to be processed. The image must have dimensions equal to
         /// ModelInputSize by ModelInputSize.</param>
         /// <returns>A DenseTensor<float> containing the normalized RGB pixel values, structured as [1, 3, ModelInputSize,
         /// ModelInputSize]. Each channel value is normalized to the range [-0.5, 0.5].</returns>
-        private DenseTensor<float> ExtractPixels(SKBitmap bitmap)
+        private DenseTensor<float> ExtractPixels(Image<Rgb24> bitmap)
         {
             var tensor = new DenseTensor<float>(new[] { 1, 3, ModelInputSize, ModelInputSize });
-            var pixmap = bitmap.PeekPixels() ?? throw new InvalidOperationException("Unable to access bitmap pixels.");
-
-            var pixels = pixmap.GetPixelSpan<SKColor>();
-            for (int y = 0; y < ModelInputSize; y++)
+            bitmap.ProcessPixelRows(accessor =>
             {
-                int rowOffset = y * ModelInputSize;
-                for (int x = 0; x < ModelInputSize; x++)
+                for (int y = 0; y < ModelInputSize; y++)
                 {
-                    var color = pixels[rowOffset + x];
-                    tensor[0, 0, y, x] = color.Red / 255f - 0.5f;
-                    tensor[0, 1, y, x] = color.Green / 255f - 0.5f;
-                    tensor[0, 2, y, x] = color.Blue / 255f - 0.5f;
+                    var row = accessor.GetRowSpan(y);
+                    for (int x = 0; x < ModelInputSize; x++)
+                    {
+                        var color = row[x];
+                        tensor[0, 0, y, x] = color.R / 255f - 0.5f;
+                        tensor[0, 1, y, x] = color.G / 255f - 0.5f;
+                        tensor[0, 2, y, x] = color.B / 255f - 0.5f;
+                    }
                 }
-            }
+            });
+
             return tensor;
         }
 
@@ -239,28 +242,12 @@ namespace PixelsorterClassLib
         /// <param name="original">The original bitmap used as a reference for color values. Must match the dimensions of the bitmap parameter.</param>
         /// <param name="fadeWidth">The width, in pixels, of the fade effect applied to the edges. Determines how far the fade extends from the
         /// bitmap's borders.</param>
-        /// <returns>A new SKBitmap containing the original image with faded edges, where the alpha channel is adjusted to create
+        /// <returns>A new image containing the original image with faded edges, where the alpha channel is adjusted to create
         /// a smooth transition.</returns>
-        private SKBitmap FadeEgdes(SKBitmap bitmap, int fadeWidth)
+        private Image<L8> FadeEgdes(Image<L8> bitmap, int fadeWidth)
         {
-            SKBitmap finalMask = new SKBitmap(new SKImageInfo(bitmap.Width, bitmap.Height, SKColorType.Gray8, SKAlphaType.Opaque));
-            using var canvas = new SKCanvas(finalMask);
-            using var paint = new SKPaint();
-            paint.ImageFilter = SKImageFilter.CreateBlur(fadeWidth, fadeWidth);
-            canvas.DrawBitmap(bitmap, 0, 0, paint);
-
-            var output = new SKBitmap(new SKImageInfo(bitmap.Width, bitmap.Height, SKColorType.Gray8, SKAlphaType.Opaque));
-
-            var originalPixmap = bitmap.PeekPixels() ?? throw new InvalidOperationException("Unable to access mask pixels.");
-            var blurredPixmap = finalMask.PeekPixels() ?? throw new InvalidOperationException("Unable to access blurred mask pixels.");
-            var outputPixmap = output.PeekPixels() ?? throw new InvalidOperationException("Unable to access output mask pixels.");
-
-            var originalSpan = originalPixmap.GetPixelSpan<byte>();
-            var blurredSpan = blurredPixmap.GetPixelSpan<byte>();
-            var outputSpan = outputPixmap.GetPixelSpan<byte>();
-            int originalRowBytes = originalPixmap.RowBytes;
-            int blurredRowBytes = blurredPixmap.RowBytes;
-            int outputRowBytes = outputPixmap.RowBytes;
+            using var finalMask = bitmap.Clone(ctx => ctx.GaussianBlur(fadeWidth));
+            var output = new Image<L8>(bitmap.Width, bitmap.Height);
 
             int[,] bayerMatrix = new int[4, 4]
             {
@@ -272,19 +259,16 @@ namespace PixelsorterClassLib
 
             for (int y = 0; y < bitmap.Height; y++)
             {
-                int originalRow = y * originalRowBytes;
-                int blurredRow = y * blurredRowBytes;
-                int outputRow = y * outputRowBytes;
                 for (int x = 0; x < bitmap.Width; x++)
                 {
-                    float originalMaskValue = originalSpan[originalRow + x] / 255f;
-                    float blurredMaskValue = blurredSpan[blurredRow + x] / 255f;
+                    float originalMaskValue = bitmap[x, y].PackedValue / 255f;
+                    float blurredMaskValue = finalMask[x, y].PackedValue / 255f;
                     float maskValue = Math.Max(originalMaskValue, blurredMaskValue);
 
                     float threshold = bayerMatrix[y % 4, x % 4] / 16f;
 
                     byte maskColor = maskValue > threshold ? (byte)255 : (byte)0;
-                    outputSpan[outputRow + x] = maskColor;
+                    output[x, y] = new L8(maskColor);
                 }
             }
 
@@ -301,14 +285,14 @@ namespace PixelsorterClassLib
         /// <param name="inputBitmap">The bitmap image from which the mask is generated. This parameter must not be null.</param>
         /// <param name="fadeWidth">The width, in pixels, of the fade effect applied to the edges of the mask. Specify a value greater than zero
         /// to enable edge fading.</param>
-        /// <returns>An SKBitmap containing the generated mask, with the same dimensions as the input bitmap.</returns>
+        /// <returns>An image containing the generated mask, with the same dimensions as the input bitmap.</returns>
         /// <exception cref="InvalidOperationException">Thrown when the input bitmap cannot be resized or if the output tensor from the model has an unexpected
         /// shape.</exception>
-          private (SKBitmap mask, SKBitmap invertedMask) CreateMask(SKBitmap inputBitmap, int fadeWidth)
+          private (Image<L8> mask, Image<L8> invertedMask) CreateMask(Image<Rgb24> inputBitmap, int fadeWidth)
         {
             ArgumentNullException.ThrowIfNull(inputBitmap);
 
-            using var resizedBitmap = inputBitmap.Resize(new SKImageInfo(ModelInputSize, ModelInputSize), new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.Linear)) ?? throw new InvalidOperationException("Failed to resize the input bitmap.");
+            using var resizedBitmap = inputBitmap.Clone(ctx => ctx.Resize(ModelInputSize, ModelInputSize));
 
             var inputTensor = ExtractPixels(resizedBitmap);
 
@@ -332,29 +316,19 @@ namespace PixelsorterClassLib
 
             var (min, max) = GetMaskRange(outputTensor);
 
-            var maskBitmap = new SKBitmap(new SKImageInfo(inputBitmap.Width, inputBitmap.Height, SKColorType.Gray8, SKAlphaType.Opaque));
-            var invertedMaskBitmap = new SKBitmap(new SKImageInfo(inputBitmap.Width, inputBitmap.Height, SKColorType.Gray8, SKAlphaType.Opaque));
-
-            var maskPixmap = maskBitmap.PeekPixels() ?? throw new InvalidOperationException("Unable to access mask pixels.");
-            var invertedMaskPixmap = invertedMaskBitmap.PeekPixels() ?? throw new InvalidOperationException("Unable to access inverted mask pixels.");
-
-            var maskSpan = maskPixmap.GetPixelSpan<byte>();
-            var invertedMaskSpan = invertedMaskPixmap.GetPixelSpan<byte>();
-            int maskRowBytes = maskPixmap.RowBytes;
-            int invertedMaskRowBytes = invertedMaskPixmap.RowBytes;
+            var maskBitmap = new Image<L8>(inputBitmap.Width, inputBitmap.Height);
+            var invertedMaskBitmap = new Image<L8>(inputBitmap.Width, inputBitmap.Height);
 
             for (int y = 0; y < inputBitmap.Height; y++)
             {
-                int maskRow = y * maskRowBytes;
-                int invertedMaskRow = y * invertedMaskRowBytes;
                 float normalizedY = inputBitmap.Height > 1 ? y / (float)(inputBitmap.Height - 1) : 0f;
                 for (int x = 0; x < inputBitmap.Width; x++)
                 {
                     float normalizedX = inputBitmap.Width > 1 ? x / (float)(inputBitmap.Width - 1) : 0f;
                     var maskValue = GetMaskValueBilinear(outputTensor, maskHeight, maskWidth, normalizedY, normalizedX, min, max);
                     byte grayValue = maskValue < 0.5f ? (byte)255 : (byte)0;
-                    maskSpan[maskRow + x] = grayValue;
-                    invertedMaskSpan[invertedMaskRow + x] = grayValue == 255 ? (byte)0 : (byte)255;
+                    maskBitmap[x, y] = new L8(grayValue);
+                    invertedMaskBitmap[x, y] = new L8(grayValue == 255 ? (byte)0 : (byte)255);
                 }
             }
 
@@ -384,10 +358,14 @@ namespace PixelsorterClassLib
         /// <exception cref="InvalidOperationException">Thrown if the input image cannot be loaded from the specified path.</exception>
         public (NDArray mask, NDArray invertMask) GetMask(String inputImagePath, int fadeWidth = 30, bool invert = false)
         {
-            using var inputBitmap = SKBitmap.Decode(inputImagePath) ?? throw new InvalidOperationException("Failed to load the input image.");
+            using var inputBitmap = SixLabors.ImageSharp.Image.Load<Rgb24>(inputImagePath);
             LoadModel();
             (var mask, var invertmask) = CreateMask(inputBitmap, fadeWidth);
-            return (ConvertMaskToNdArray(mask), ConvertMaskToNdArray(invertmask));
+            using (mask)
+            using (invertmask)
+            {
+                return (ConvertMaskToNdArray(mask), ConvertMaskToNdArray(invertmask));
+            }
         }
 
         /// <summary>
@@ -402,22 +380,36 @@ namespace PixelsorterClassLib
             return Task.Run(() =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                using var inputBitmap = SKBitmap.Decode(inputImagePath) ?? throw new InvalidOperationException("Failed to load the input image.");
+                using var inputBitmap = SixLabors.ImageSharp.Image.Load<Rgb24>(inputImagePath);
                 cancellationToken.ThrowIfCancellationRequested();
                 LoadModel();
                 cancellationToken.ThrowIfCancellationRequested();
                 (var mask, var invertmask) = CreateMask(inputBitmap, fadeWidth);
-                return (ConvertMaskToNdArray(mask), ConvertMaskToNdArray(invertmask));
+                using (mask)
+                using (invertmask)
+                {
+                    return (ConvertMaskToNdArray(mask), ConvertMaskToNdArray(invertmask));
+                }
             }, cancellationToken);
         }
 
-        private static NDArray ConvertMaskToNdArray(SKBitmap mask)
+        private static NDArray ConvertMaskToNdArray(Image<L8> mask)
         {
-            var pixmap = mask.PeekPixels() ?? throw new InvalidOperationException("Unable to access mask pixels.");
-            var span = pixmap.GetPixelSpan<byte>();
+            var data = new byte[mask.Height * mask.Width];
 
-            // Mask is Gray8, so one channel. Create NDArray with shape [height, width, 1]
-            var data = span.ToArray();
+            mask.ProcessPixelRows(accessor =>
+            {
+                for (int y = 0; y < mask.Height; y++)
+                {
+                    var row = accessor.GetRowSpan(y);
+                    int rowOffset = y * mask.Width;
+                    for (int x = 0; x < mask.Width; x++)
+                    {
+                        data[rowOffset + x] = row[x].PackedValue;
+                    }
+                }
+            });
+
             return np.array(data).reshape(new Shape(mask.Height, mask.Width, 1));
         }
     }
