@@ -1,4 +1,5 @@
-﻿using SixLabors.ImageSharp;
+﻿using System.Buffers;
+using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 
 namespace PixelsorterClassLib;
@@ -75,28 +76,35 @@ public class Sorter
 
                     if (segLen <= 1) continue;
 
-                    var pixelBuffer = new PixelSortData[segLen];
-                    for (int i = 0; i < segLen; i++)
+                    var pixelBuffer = ArrayPool<PixelSortData>.Shared.Rent(segLen);
+                    try
                     {
-                        int pixelOffset = rowOffset + (segStart + i) * 4;
-                        byte r = sourceData[pixelOffset];
-                        byte g = sourceData[pixelOffset + 1];
-                        byte b = sourceData[pixelOffset + 2];
-                        byte a = sourceData[pixelOffset + 3];
-                        pixelBuffer[i] = new PixelSortData(r, g, b, a, sortingFunction(new Rgba32(r, g, b, a)));
+                        for (int i = 0; i < segLen; i++)
+                        {
+                            int pixelOffset = rowOffset + (segStart + i) * 4;
+                            byte r = sourceData[pixelOffset];
+                            byte g = sourceData[pixelOffset + 1];
+                            byte b = sourceData[pixelOffset + 2];
+                            byte a = sourceData[pixelOffset + 3];
+                            pixelBuffer[i] = new PixelSortData(r, g, b, a, sortingFunction(new Rgba32(r, g, b, a)));
+                        }
+
+                        Array.Sort(pixelBuffer, 0, segLen);
+
+                        for (int i = 0; i < segLen; i++)
+                        {
+                            int pixelOffset = rowOffset + (segStart + i) * 4;
+                            int sourceIndex = sortDirections == SortDirections.RowRightToLeft ? segLen - 1 - i : i;
+                            ref var pixel = ref pixelBuffer[sourceIndex];
+                            resultData[pixelOffset] = pixel.R;
+                            resultData[pixelOffset + 1] = pixel.G;
+                            resultData[pixelOffset + 2] = pixel.B;
+                            resultData[pixelOffset + 3] = pixel.A;
+                        }
                     }
-
-                    Array.Sort(pixelBuffer, 0, segLen);
-
-                    for (int i = 0; i < segLen; i++)
+                    finally
                     {
-                        int pixelOffset = rowOffset + (segStart + i) * 4;
-                        int sourceIndex = sortDirections == SortDirections.RowRightToLeft ? segLen - 1 - i : i;
-                        ref var pixel = ref pixelBuffer[sourceIndex];
-                        resultData[pixelOffset] = pixel.R;
-                        resultData[pixelOffset + 1] = pixel.G;
-                        resultData[pixelOffset + 2] = pixel.B;
-                        resultData[pixelOffset + 3] = pixel.A;
+                        ArrayPool<PixelSortData>.Shared.Return(pixelBuffer);
                     }
                 }
             });
@@ -125,28 +133,35 @@ public class Sorter
 
                     if (segLen <= 1) continue;
 
-                    var pixelBuffer = new PixelSortData[segLen];
-                    for (int i = 0; i < segLen; i++)
+                    var pixelBuffer = ArrayPool<PixelSortData>.Shared.Rent(segLen);
+                    try
                     {
-                        int pixelOffset = columnOffset + (segStart + i) * width * 4;
-                        byte r = sourceData[pixelOffset];
-                        byte g = sourceData[pixelOffset + 1];
-                        byte b = sourceData[pixelOffset + 2];
-                        byte a = sourceData[pixelOffset + 3];
-                        pixelBuffer[i] = new PixelSortData(r, g, b, a, sortingFunction(new Rgba32(r, g, b, a)));
+                        for (int i = 0; i < segLen; i++)
+                        {
+                            int pixelOffset = columnOffset + (segStart + i) * width * 4;
+                            byte r = sourceData[pixelOffset];
+                            byte g = sourceData[pixelOffset + 1];
+                            byte b = sourceData[pixelOffset + 2];
+                            byte a = sourceData[pixelOffset + 3];
+                            pixelBuffer[i] = new PixelSortData(r, g, b, a, sortingFunction(new Rgba32(r, g, b, a)));
+                        }
+
+                        Array.Sort(pixelBuffer, 0, segLen);
+
+                        for (int i = 0; i < segLen; i++)
+                        {
+                            int pixelOffset = columnOffset + (segStart + i) * width * 4;
+                            int sourceIndex = sortDirections == SortDirections.ColumnBottomToTop ? segLen - 1 - i : i;
+                            ref var pixel = ref pixelBuffer[sourceIndex];
+                            resultData[pixelOffset] = pixel.R;
+                            resultData[pixelOffset + 1] = pixel.G;
+                            resultData[pixelOffset + 2] = pixel.B;
+                            resultData[pixelOffset + 3] = pixel.A;
+                        }
                     }
-
-                    Array.Sort(pixelBuffer, 0, segLen);
-
-                    for (int i = 0; i < segLen; i++)
+                    finally
                     {
-                        int pixelOffset = columnOffset + (segStart + i) * width * 4;
-                        int sourceIndex = sortDirections == SortDirections.ColumnBottomToTop ? segLen - 1 - i : i;
-                        ref var pixel = ref pixelBuffer[sourceIndex];
-                        resultData[pixelOffset] = pixel.R;
-                        resultData[pixelOffset + 1] = pixel.G;
-                        resultData[pixelOffset + 2] = pixel.B;
-                        resultData[pixelOffset + 3] = pixel.A;
+                        ArrayPool<PixelSortData>.Shared.Return(pixelBuffer);
                     }
                 }
             });
@@ -295,12 +310,11 @@ public class Sorter
                 return;
             }
 
-            var buffer = runPixels.ToArray();
-            Array.Sort(buffer, 0, buffer.Length);
+            runPixels.Sort();
 
             for (int i = 0; i < runOffsets.Count; i++)
             {
-                ref var pixel = ref buffer[i];
+                var pixel = runPixels[i];
                 int pixelOffset = runOffsets[i];
                 resultData[pixelOffset] = pixel.R;
                 resultData[pixelOffset + 1] = pixel.G;
