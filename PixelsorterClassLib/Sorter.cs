@@ -1,5 +1,4 @@
-﻿using NumSharp;
-using SixLabors.ImageSharp;
+﻿using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 
 namespace PixelsorterClassLib;
@@ -7,10 +6,6 @@ namespace PixelsorterClassLib;
 /// <summary>
 /// Provides methods for sorting image data based on specified criteria.
 /// </summary>
-/// <remarks>The Sorter class includes functionality to sort the pixels of an image row by row, allowing for
-/// custom sorting based on a provided function that extracts a comparable value from each pixel. Sorting is performed
-/// in a way that maintains the original image structure, making it suitable for image processing tasks where row-wise
-/// ordering is required.</remarks>
 public class Sorter
 {
 
@@ -19,35 +14,33 @@ public class Sorter
     /// <summary>
     /// Sorts the pixels in an image row by row based on the provided sorting criterion.
     /// </summary>
-    /// <param name="imageData">3D NumSharp array representing the image (height x width x channels)</param>
+    /// <param name="imageData">Source image to sort.</param>
     /// <param name="sortingFunction">Function that extracts a comparable value from a pixel</param>
     /// <param name="sortDirections">Direction in which to sort the pixels (e.g., left-to-right, right-to-left)</param>
-    /// <param name="mask">Optional 3D NumSharp array representing a binary mask to define sortable segments (same height and width as imageData, with 1 or 4 channels)</param>
-    /// <returns>Sorted image as a 3D NumSharp array</returns>
-    public static NDArray SortImage(NDArray imageData, Func<Rgba32, float> sortingFunction, SortDirections sortDirections, NDArray? mask = null)
+    /// <param name="mask">Optional binary mask to define sortable segments (same dimensions as <paramref name="imageData"/>).</param>
+    /// <returns>Sorted image.</returns>
+    public static Image<Rgba32> SortImage(Image<Rgba32> imageData, Func<Rgba32, float> sortingFunction, SortDirections sortDirections, Image<L8>? mask = null)
     {
-        var shape = imageData.shape;
-        int height = shape[0];
-        int width = shape[1];
-        int channels = shape[2];
+        ArgumentNullException.ThrowIfNull(imageData);
 
-        var sourceData = imageData.ToArray<byte>();
+        int height = imageData.Height;
+        int width = imageData.Width;
+
+        if (mask is not null && (mask.Width != width || mask.Height != height))
+        {
+            throw new ArgumentException("Mask dimensions must match image dimensions.", nameof(mask));
+        }
+
+        var sourceData = ExtractImageData(imageData);
         var resultData = new byte[sourceData.Length];
 
         // Unsorted pixels keep their original values
         Array.Copy(sourceData, resultData, sourceData.Length);
 
-        // Load mask if an image path was provided.
-        // White pixels (>= 128) in the mask are the segments to be sorted;
-        // black pixels (< 128) act as break points and are left in place.
-        // The faded edges produced by FadeEdges are already baked into the
-        // binary mask via Bayer dithering, so no extra handling is needed.
         byte[]? maskData = null;
-        int maskChannels = 4;
         if (mask is not null)
         {
-            maskData = mask.ToArray<byte>();
-            maskChannels = mask.shape[2];
+            maskData = ExtractMaskData(mask);
         }
 
         if (sortDirections == SortDirections.IntoMask)
@@ -55,20 +48,20 @@ public class Sorter
             if (maskData is null)
                 throw new ArgumentException("A mask is required for IntoMask sorting.", nameof(mask));
 
-            ApplyRadialMaskSort(sourceData, resultData, width, height, channels, maskData, maskChannels, sortingFunction);
+            ApplyRadialMaskSort(sourceData, resultData, width, height, maskData, sortingFunction);
         }
         else if (sortDirections == SortDirections.RowRightToLeft || sortDirections == SortDirections.RowLeftToRight)
         {
             Parallel.For(0, height, y =>
             {
-                int rowOffset = y * width * channels;
-                int maskRowOffset = y * width * maskChannels;
+                int rowOffset = y * width * 4;
+                int maskRowOffset = y * width;
                 int x = 0;
 
                 while (x < width)
                 {
                     // Skip pixels that are outside the mask (black = 0 = foreground subject = leave in place)
-                    if (maskData != null && maskData[maskRowOffset + x * maskChannels] < 128)
+                    if (maskData != null && maskData[maskRowOffset + x] < 128)
                     {
                         x++;
                         continue;
@@ -76,7 +69,7 @@ public class Sorter
 
                     // Collect a contiguous run of mask-active pixels as one sortable chunk
                     int segStart = x;
-                    while (x < width && (maskData == null || maskData[maskRowOffset + x * maskChannels] >= 128))
+                    while (x < width && (maskData == null || maskData[maskRowOffset + x] >= 128))
                         x++;
                     int segLen = x - segStart;
 
@@ -85,11 +78,11 @@ public class Sorter
                     var pixelBuffer = new PixelSortData[segLen];
                     for (int i = 0; i < segLen; i++)
                     {
-                        int pixelOffset = rowOffset + (segStart + i) * channels;
+                        int pixelOffset = rowOffset + (segStart + i) * 4;
                         byte r = sourceData[pixelOffset];
                         byte g = sourceData[pixelOffset + 1];
                         byte b = sourceData[pixelOffset + 2];
-                        byte a = channels > 3 ? sourceData[pixelOffset + 3] : (byte)255;
+                        byte a = sourceData[pixelOffset + 3];
                         pixelBuffer[i] = new PixelSortData(r, g, b, a, sortingFunction(new Rgba32(r, g, b, a)));
                     }
 
@@ -97,13 +90,13 @@ public class Sorter
 
                     for (int i = 0; i < segLen; i++)
                     {
-                        int pixelOffset = rowOffset + (segStart + i) * channels;
+                        int pixelOffset = rowOffset + (segStart + i) * 4;
                         int sourceIndex = sortDirections == SortDirections.RowRightToLeft ? segLen - 1 - i : i;
                         ref var pixel = ref pixelBuffer[sourceIndex];
                         resultData[pixelOffset] = pixel.R;
                         resultData[pixelOffset + 1] = pixel.G;
                         resultData[pixelOffset + 2] = pixel.B;
-                        if (channels > 3) resultData[pixelOffset + 3] = pixel.A;
+                        resultData[pixelOffset + 3] = pixel.A;
                     }
                 }
             });
@@ -112,14 +105,13 @@ public class Sorter
         {
             Parallel.For(0, width, x =>
             {
-                int columnOffset = x * channels;
-                int maskColumnOffset = x * maskChannels;
+                int columnOffset = x * 4;
                 int y = 0;
 
                 while (y < height)
                 {
                     // Skip pixels that are outside the mask
-                    if (maskData != null && maskData[y * width * maskChannels + maskColumnOffset] < 128)
+                    if (maskData != null && maskData[y * width + x] < 128)
                     {
                         y++;
                         continue;
@@ -127,7 +119,7 @@ public class Sorter
 
                     // Collect a contiguous run of mask-active pixels as one sortable chunk
                     int segStart = y;
-                    while (y < height && (maskData == null || maskData[y * width * maskChannels + maskColumnOffset] >= 128))
+                    while (y < height && (maskData == null || maskData[y * width + x] >= 128))
                         y++;
                     int segLen = y - segStart;
 
@@ -136,11 +128,11 @@ public class Sorter
                     var pixelBuffer = new PixelSortData[segLen];
                     for (int i = 0; i < segLen; i++)
                     {
-                        int pixelOffset = columnOffset + (segStart + i) * width * channels;
+                        int pixelOffset = columnOffset + (segStart + i) * width * 4;
                         byte r = sourceData[pixelOffset];
                         byte g = sourceData[pixelOffset + 1];
                         byte b = sourceData[pixelOffset + 2];
-                        byte a = channels > 3 ? sourceData[pixelOffset + 3] : (byte)255;
+                        byte a = sourceData[pixelOffset + 3];
                         pixelBuffer[i] = new PixelSortData(r, g, b, a, sortingFunction(new Rgba32(r, g, b, a)));
                     }
 
@@ -148,19 +140,84 @@ public class Sorter
 
                     for (int i = 0; i < segLen; i++)
                     {
-                        int pixelOffset = columnOffset + (segStart + i) * width * channels;
+                        int pixelOffset = columnOffset + (segStart + i) * width * 4;
                         int sourceIndex = sortDirections == SortDirections.ColumnBottomToTop ? segLen - 1 - i : i;
                         ref var pixel = ref pixelBuffer[sourceIndex];
                         resultData[pixelOffset] = pixel.R;
                         resultData[pixelOffset + 1] = pixel.G;
                         resultData[pixelOffset + 2] = pixel.B;
-                        if (channels > 3) resultData[pixelOffset + 3] = pixel.A;
+                        resultData[pixelOffset + 3] = pixel.A;
                     }
                 }
             });
         }
 
-        return np.array(resultData).reshape(shape);
+        return BuildImage(resultData, width, height);
+    }
+
+    private static byte[] ExtractImageData(Image<Rgba32> image)
+    {
+        var data = new byte[image.Width * image.Height * 4];
+        image.ProcessPixelRows(accessor =>
+        {
+            for (int y = 0; y < image.Height; y++)
+            {
+                var row = accessor.GetRowSpan(y);
+                int rowOffset = y * image.Width * 4;
+                for (int x = 0; x < image.Width; x++)
+                {
+                    int pixelOffset = rowOffset + (x * 4);
+                    var pixel = row[x];
+                    data[pixelOffset] = pixel.R;
+                    data[pixelOffset + 1] = pixel.G;
+                    data[pixelOffset + 2] = pixel.B;
+                    data[pixelOffset + 3] = pixel.A;
+                }
+            }
+        });
+        return data;
+    }
+
+    private static byte[] ExtractMaskData(Image<L8> mask)
+    {
+        var data = new byte[mask.Width * mask.Height];
+        mask.ProcessPixelRows(accessor =>
+        {
+            for (int y = 0; y < mask.Height; y++)
+            {
+                var row = accessor.GetRowSpan(y);
+                int rowOffset = y * mask.Width;
+                for (int x = 0; x < mask.Width; x++)
+                {
+                    data[rowOffset + x] = row[x].PackedValue;
+                }
+            }
+        });
+        return data;
+    }
+
+    private static Image<Rgba32> BuildImage(byte[] data, int width, int height)
+    {
+        var image = new Image<Rgba32>(width, height);
+        image.ProcessPixelRows(accessor =>
+        {
+            for (int y = 0; y < height; y++)
+            {
+                var row = accessor.GetRowSpan(y);
+                int rowOffset = y * width * 4;
+                for (int x = 0; x < width; x++)
+                {
+                    int pixelOffset = rowOffset + (x * 4);
+                    row[x] = new Rgba32(
+                        data[pixelOffset],
+                        data[pixelOffset + 1],
+                        data[pixelOffset + 2],
+                        data[pixelOffset + 3]);
+                }
+            }
+        });
+
+        return image;
     }
 
 
@@ -197,13 +254,11 @@ public class Sorter
     /// <param name="resultData">Flattened destination byte array to write sorted pixels into.</param>
     /// <param name="width">Image width in pixels.</param>
     /// <param name="height">Image height in pixels.</param>
-    /// <param name="channels">Channel count of the image (e.g., 4 for RGBA).</param>
     /// <param name="maskData">Flattened mask byte array.</param>
-    /// <param name="maskChannels">Channel count of the mask (1 or 4).</param>
     /// <param name="sortingFunction">Function producing the sortable value from a pixel.</param>
-    private static void ApplyRadialMaskSort(byte[] sourceData, byte[] resultData, int width, int height, int channels, byte[] maskData, int maskChannels, Func<Rgba32, float> sortingFunction)
+    private static void ApplyRadialMaskSort(byte[] sourceData, byte[] resultData, int width, int height, byte[] maskData, Func<Rgba32, float> sortingFunction)
     {
-        var (centerX, centerY) = GetMaskCentroid(maskData, width, height, maskChannels);
+        var (centerX, centerY) = GetMaskCentroid(maskData, width, height);
 
         int angleBuckets = Math.Max(360, Math.Max(width, height));
         var buckets = new List<(int X, int Y, double Dist)>[angleBuckets];
@@ -250,7 +305,7 @@ public class Sorter
                 resultData[pixelOffset] = pixel.R;
                 resultData[pixelOffset + 1] = pixel.G;
                 resultData[pixelOffset + 2] = pixel.B;
-                if (channels > 3) resultData[pixelOffset + 3] = pixel.A;
+                resultData[pixelOffset + 3] = pixel.A;
             }
 
             runOffsets.Clear();
@@ -267,16 +322,16 @@ public class Sorter
 
             foreach (var point in sequence)
             {
-                int maskIndex = (point.Y * width + point.X) * maskChannels;
+                int maskIndex = point.Y * width + point.X;
                 bool insideMask = maskData[maskIndex] >= 128;
 
                 if (insideMask)
                 {
-                    int pixelOffset = (point.Y * width + point.X) * channels;
+                    int pixelOffset = (point.Y * width + point.X) * 4;
                     byte r = sourceData[pixelOffset];
                     byte g = sourceData[pixelOffset + 1];
                     byte b = sourceData[pixelOffset + 2];
-                    byte a = channels > 3 ? sourceData[pixelOffset + 3] : (byte)255;
+                    byte a = sourceData[pixelOffset + 3];
                     runOffsets.Add(pixelOffset);
                     runPixels.Add(new PixelSortData(r, g, b, a, sortingFunction(new Rgba32(r, g, b, a))));
                 }
@@ -296,9 +351,8 @@ public class Sorter
     /// <param name="maskData">Flattened mask byte array.</param>
     /// <param name="width">Image width in pixels.</param>
     /// <param name="height">Image height in pixels.</param>
-    /// <param name="maskChannels">Channel count of the mask (1 or 4).</param>
     /// <returns>Centroid coordinates (x, y) within image bounds.</returns>
-    private static (int X, int Y) GetMaskCentroid(byte[] maskData, int width, int height, int maskChannels)
+    private static (int X, int Y) GetMaskCentroid(byte[] maskData, int width, int height)
     {
         long sumX = 0;
         long sumY = 0;
@@ -306,10 +360,10 @@ public class Sorter
 
         for (int y = 0; y < height; y++)
         {
-            int maskRowOffset = y * width * maskChannels;
+            int maskRowOffset = y * width;
             for (int x = 0; x < width; x++)
             {
-                if (maskData[maskRowOffset + x * maskChannels] >= 128)
+                if (maskData[maskRowOffset + x] >= 128)
                 {
                     sumX += x;
                     sumY += y;

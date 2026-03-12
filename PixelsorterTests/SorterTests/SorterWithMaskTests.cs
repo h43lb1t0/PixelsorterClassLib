@@ -1,5 +1,6 @@
 ﻿using PixelsorterClassLib;
-using NumSharp;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace Pixelsorter.Tests.SorterTests
 {
@@ -8,104 +9,125 @@ namespace Pixelsorter.Tests.SorterTests
         [Fact]
         public void Sorter_SortLeftToRight_WithMask_SortsPixelsCorrectly()
         {
-            var imgData = SorterTestHelpers.CreateUnsortedImageData();
+            using var imgData = SorterTestHelpers.CreateUnsortedImageData();
+            using var mask = CreateMask();
 
-            var sortedImage = Sorter.SortImage(imgData, PixelsorterClassLib.SortBy.Saturation(), SortDirections.RowLeftToRight, CreateMask());
+            using var sortedImage = Sorter.SortImage(imgData, PixelsorterClassLib.SortBy.Saturation(), SortDirections.RowLeftToRight, mask);
 
-            var expectedData = np.array([
+            byte[] expectedData = [
                 ..SorterTestHelpers.Gray, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.MidSaturation,
                 ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.Gray,
                 ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.Gray, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation,
                 ..SorterTestHelpers.Gray, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.LowSaturation
-            ]).reshape(4, 4, 4);
+            ];
 
-            Assert.Equal(expectedData.ToArray<byte>(), sortedImage.ToArray<byte>());
+            Assert.Equal(expectedData, SorterTestHelpers.GetImageBytes(sortedImage));
         }
 
         [Fact]
         public void Sorter_SortIntoMask_WithMask_SortsPixelsAlongMaskRays()
         {
-            var baseImageData = SorterTestHelpers.CreateUnsortedImageData();
-            var sourceData = baseImageData.ToArray<byte>();
+            using var baseImageData = SorterTestHelpers.CreateUnsortedImageData();
+            var sourceData = SorterTestHelpers.GetImageBytes(baseImageData);
 
             SetPixel(sourceData, 1, 0, SorterTestHelpers.Gray);
             SetPixel(sourceData, 2, 0, SorterTestHelpers.HighSaturation);
             SetPixel(sourceData, 1, 1, SorterTestHelpers.Gray);
             SetPixel(sourceData, 1, 2, SorterTestHelpers.HighSaturation);
 
-            var imgData = np.array(sourceData).reshape(4, 4, 4);
+            using var imgData = SorterTestHelpers.CreateImageFromBytes(sourceData, 4, 4);
+            using var mask = CreateMask();
 
-            var sortedImage = Sorter.SortImage(imgData, PixelsorterClassLib.SortBy.Saturation(), SortDirections.IntoMask, CreateMask());
+            using var sortedImage = Sorter.SortImage(imgData, PixelsorterClassLib.SortBy.Saturation(), SortDirections.IntoMask, mask);
 
-            var expectedData = np.array([
+            byte[] expectedData = [
                 ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.Gray, ..SorterTestHelpers.MidSaturation,
                 ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.Gray,
                 ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.Gray, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation,
                 ..SorterTestHelpers.Gray, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.LowSaturation
-            ]).reshape(4, 4, 4);
+            ];
 
-            Assert.Equal(expectedData.ToArray<byte>(), sortedImage.ToArray<byte>());
+            Assert.Equal(expectedData, SorterTestHelpers.GetImageBytes(sortedImage));
         }
 
         [Fact]
         public void Sorter_SortRightToLeft_WithMask_SortsPixelsCorrectly()
         {
-            var imgData = SorterTestHelpers.CreateUnsortedImageData();
+            using var imgData = SorterTestHelpers.CreateUnsortedImageData();
+            using var mask = CreateMask();
 
-            var sortedImage = Sorter.SortImage(imgData, PixelsorterClassLib.SortBy.Saturation(), SortDirections.RowRightToLeft, CreateMask());
+            using var sortedImage = Sorter.SortImage(imgData, PixelsorterClassLib.SortBy.Saturation(), SortDirections.RowRightToLeft, mask);
 
-            var expectedData = np.array([
+            byte[] expectedData = [
                 ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.Gray, ..SorterTestHelpers.MidSaturation,
                 ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.Gray,
                 ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.Gray, ..SorterTestHelpers.HighSaturation,
                 ..SorterTestHelpers.Gray, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.LowSaturation
-            ]).reshape(4, 4, 4);
+            ];
 
-            Assert.Equal(expectedData.ToArray<byte>(), sortedImage.ToArray<byte>());
+            Assert.Equal(expectedData, SorterTestHelpers.GetImageBytes(sortedImage));
         }
 
         [Fact]
         public void Sorter_SortTopToBottom_WithMask_SortsPixelsCorrectly()
         {
-            var imgData = SorterTestHelpers.CreateUnsortedImageData();
+            using var imgData = SorterTestHelpers.CreateUnsortedImageData();
+            using var mask = CreateMask();
 
-            var sortedImage = Sorter.SortImage(imgData, PixelsorterClassLib.SortBy.Saturation(), SortDirections.ColumnTopToBottom, CreateMask());
+            using var sortedImage = Sorter.SortImage(imgData, PixelsorterClassLib.SortBy.Saturation(), SortDirections.ColumnTopToBottom, mask);
 
-            var expectedData = np.array([
+            byte[] expectedData = [
                 ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.Gray, ..SorterTestHelpers.Gray, ..SorterTestHelpers.MidSaturation,
                 ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.Gray,
                 ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation,
                 ..SorterTestHelpers.Gray, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.LowSaturation
-            ]).reshape(4, 4, 4);
+            ];
 
-            Assert.Equal(expectedData.ToArray<byte>(), sortedImage.ToArray<byte>());
+            Assert.Equal(expectedData, SorterTestHelpers.GetImageBytes(sortedImage));
         }
 
         [Fact]
         public void Sorter_SortBottomToTop_WithMask_SortsPixelsCorrectly()
         {
-            var imgData = SorterTestHelpers.CreateUnsortedImageData();
+            using var imgData = SorterTestHelpers.CreateUnsortedImageData();
+            using var mask = CreateMask();
 
-            var sortedImage = Sorter.SortImage(imgData, PixelsorterClassLib.SortBy.Saturation(), SortDirections.ColumnBottomToTop, CreateMask());
+            using var sortedImage = Sorter.SortImage(imgData, PixelsorterClassLib.SortBy.Saturation(), SortDirections.ColumnBottomToTop, mask);
 
-            var expectedData = np.array([
+            byte[] expectedData = [
                 ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.MidSaturation,
                 ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.Gray,
                 ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.Gray, ..SorterTestHelpers.Gray, ..SorterTestHelpers.HighSaturation,
                 ..SorterTestHelpers.Gray, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.LowSaturation
-            ]).reshape(4, 4, 4);
+            ];
 
-            Assert.Equal(expectedData.ToArray<byte>(), sortedImage.ToArray<byte>());
+            Assert.Equal(expectedData, SorterTestHelpers.GetImageBytes(sortedImage));
         }
 
-        private static NDArray CreateMask()
+        private static Image<L8> CreateMask()
         {
-            return np.array(new byte[] {
+            var image = new Image<L8>(4, 4);
+            byte[] maskData = [
                 255, 255, 255, 0,
                 0, 255, 255, 0,
                 0, 255, 255, 0,
                 0, 0, 0, 0
-            }).reshape(4, 4, 1);
+            ];
+
+            image.ProcessPixelRows(accessor =>
+            {
+                for (int y = 0; y < 4; y++)
+                {
+                    var row = accessor.GetRowSpan(y);
+                    int rowOffset = y * 4;
+                    for (int x = 0; x < 4; x++)
+                    {
+                        row[x] = new L8(maskData[rowOffset + x]);
+                    }
+                }
+            });
+
+            return image;
         }
 
         private static void SetPixel(byte[] data, int x, int y, byte[] pixel)

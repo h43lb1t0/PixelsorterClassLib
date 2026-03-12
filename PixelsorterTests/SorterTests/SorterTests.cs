@@ -1,5 +1,4 @@
 ﻿using PixelsorterClassLib;
-using NumSharp;
 
 namespace Pixelsorter.Tests.SorterTests
 {
@@ -18,75 +17,75 @@ namespace Pixelsorter.Tests.SorterTests
         [Fact]
         public void Sorter_SortLeftToRight_SortsPixelsCorrectly()
         {
-            var imgData = SorterTestHelpers.CreateUnsortedImageData();
+            using var imgData = SorterTestHelpers.CreateUnsortedImageData();
 
-            var sortedImage = Sorter.SortImage(imgData, PixelsorterClassLib.SortBy.Saturation(), SortDirections.RowLeftToRight);
+            using var sortedImage = Sorter.SortImage(imgData, PixelsorterClassLib.SortBy.Saturation(), SortDirections.RowLeftToRight);
 
-            var expectedData = np.array([
+            byte[] expectedData = [
                 ..SorterTestHelpers.Gray, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation,
                 ..SorterTestHelpers.Gray, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation,
                 ..SorterTestHelpers.Gray, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation,
                 ..SorterTestHelpers.Gray, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation
-            ]).reshape(4, 4, 4);
+            ];
 
-            Assert.Equal(expectedData.ToArray<byte>(), sortedImage.ToArray<byte>());
+            Assert.Equal(expectedData, SorterTestHelpers.GetImageBytes(sortedImage));
         }
 
         [Fact]
         public void Sorter_SortRightToLeft_SortsPixelsCorrectly()
         {
-            var imgData = SorterTestHelpers.CreateUnsortedImageData();
+            using var imgData = SorterTestHelpers.CreateUnsortedImageData();
 
-            var sortedImage = Sorter.SortImage(imgData, PixelsorterClassLib.SortBy.Saturation(), SortDirections.RowRightToLeft);
+            using var sortedImage = Sorter.SortImage(imgData, PixelsorterClassLib.SortBy.Saturation(), SortDirections.RowRightToLeft);
 
-            var expectedData = np.array([
+            byte[] expectedData = [
                 ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.Gray,
                 ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.Gray,
                 ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.Gray,
                 ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.Gray
-            ]).reshape(4, 4, 4);
+            ];
 
-            Assert.Equal(expectedData.ToArray<byte>(), sortedImage.ToArray<byte>());
+            Assert.Equal(expectedData, SorterTestHelpers.GetImageBytes(sortedImage));
         }
 
         [Fact]
         public void Sorter_SortTopToBottom_SortsPixelsCorrectly()
         {
-            var imgData = SorterTestHelpers.CreateUnsortedImageData();
+            using var imgData = SorterTestHelpers.CreateUnsortedImageData();
 
-            var sortedImage = Sorter.SortImage(imgData, PixelsorterClassLib.SortBy.Saturation(), SortDirections.ColumnTopToBottom);
+            using var sortedImage = Sorter.SortImage(imgData, PixelsorterClassLib.SortBy.Saturation(), SortDirections.ColumnTopToBottom);
 
-            var expectedData = np.array([
+            byte[] expectedData = [
                 ..SorterTestHelpers.Gray, ..SorterTestHelpers.Gray, ..SorterTestHelpers.Gray, ..SorterTestHelpers.Gray,
                 ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.LowSaturation,
                 ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.MidSaturation,
                 ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.HighSaturation
-            ]).reshape(4, 4, 4);
+            ];
 
-            Assert.Equal(expectedData.ToArray<byte>(), sortedImage.ToArray<byte>());
+            Assert.Equal(expectedData, SorterTestHelpers.GetImageBytes(sortedImage));
         }
 
         [Fact]
         public void Sorter_SortBottomToTop_SortsPixelsCorrectly()
         {
-            var imgData = SorterTestHelpers.CreateUnsortedImageData();
+            using var imgData = SorterTestHelpers.CreateUnsortedImageData();
 
-            var sortedImage = Sorter.SortImage(imgData, PixelsorterClassLib.SortBy.Saturation(), SortDirections.ColumnBottomToTop);
+            using var sortedImage = Sorter.SortImage(imgData, PixelsorterClassLib.SortBy.Saturation(), SortDirections.ColumnBottomToTop);
 
-            var expectedData = np.array([
+            byte[] expectedData = [
                 ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.HighSaturation,
                 ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.MidSaturation,
                 ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.LowSaturation,
                 ..SorterTestHelpers.Gray, ..SorterTestHelpers.Gray, ..SorterTestHelpers.Gray, ..SorterTestHelpers.Gray
-            ]).reshape(4, 4, 4);
+            ];
 
-            Assert.Equal(expectedData.ToArray<byte>(), sortedImage.ToArray<byte>());
+            Assert.Equal(expectedData, SorterTestHelpers.GetImageBytes(sortedImage));
         }
 
         [Fact]
         public void Sorter_IntoMask_ExceptionThrown()
         {
-            var imgData = SorterTestHelpers.CreateUnsortedImageData();
+            using var imgData = SorterTestHelpers.CreateUnsortedImageData();
 
             Assert.Throws<ArgumentException>(() => Sorter.SortImage(imgData, PixelsorterClassLib.SortBy.Saturation(), SortDirections.IntoMask));
         }

@@ -1,69 +1,57 @@
-﻿using NumSharp;
+﻿using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
-using System;
-using System.Collections.Generic;
-using System.Text;
-using Xunit;
 
 namespace Pixelsorter.Tests.ImageTests
 {
     public class NDArrayToImageDataTests
     {
         [Fact]
-        public void NdarrayToImageData_ConvertsColorImageCorrectly()
+        public void SaveImage_SavesL8MaskImage()
         {
-            // 3 channels (RGB)
-            var data = new byte[] { 255, 128, 64, 10, 20, 30 }; // 1x2 image
-            var ndArray = np.array(data).reshape(1, 2, 3);
+            string outPath = Path.Combine(Path.GetTempPath(), $"test_save_mask_image_{Guid.NewGuid()}.png");
 
-            using var image = PixelsorterClassLib.Image.NdarrayToImgData(ndArray);
+            try
+            {
+                using var mask = new Image<L8>(2, 1);
+                mask[0, 0] = new L8(255);
+                mask[1, 0] = new L8(0);
 
-            Assert.Equal(2, image.Width);
-            Assert.Equal(1, image.Height);
+                PixelsorterClassLib.Image.SaveImage(mask, outPath);
 
-            Assert.Equal(new Rgba32(255, 128, 64, 255), image[0, 0]);
-            Assert.Equal(new Rgba32(10, 20, 30, 255), image[1, 0]);
+                Assert.True(File.Exists(outPath));
+                Assert.True(new FileInfo(outPath).Length > 0);
+            }
+            finally
+            {
+                if (File.Exists(outPath)) File.Delete(outPath);
+            }
         }
 
         [Fact]
-        public void NdarrayToImageData_ConvertsGrayscaleImageCorrectly()
+        public void LoadImage_LoadsRgbaPixels()
         {
-            // 1 channel (Grayscale)
-            var data = new byte[] { 255, 128 }; // 1x2 image
-            var ndArray = np.array(data).reshape(1, 2, 1);
+            string path = Path.Combine(Path.GetTempPath(), $"test_load_rgba_{Guid.NewGuid()}.png");
 
-            using var image = PixelsorterClassLib.Image.NdarrayToImgData(ndArray);
+            try
+            {
+                using (var original = new Image<Rgba32>(2, 1))
+                {
+                    original[0, 0] = new Rgba32(255, 128, 64, 100);
+                    original[1, 0] = new Rgba32(10, 20, 30, 200);
+                    original.Save(path);
+                }
 
-            Assert.Equal(2, image.Width);
-            Assert.Equal(1, image.Height);
+                using var loaded = PixelsorterClassLib.Image.LoadImage(path);
 
-            Assert.Equal(new Rgba32(255, 255, 255, 255), image[0, 0]);
-            Assert.Equal(new Rgba32(128, 128, 128, 255), image[1, 0]);
-        }
-
-        [Fact]
-        public void NdarrayToImageData_ConvertsTransparentImageCorrectly()
-        {
-            // 4 channels (RGBA)
-            var data = new byte[] { 255, 128, 64, 100, 10, 20, 30, 0 }; // 1x2 image
-            var ndArray = np.array(data).reshape(1, 2, 4);
-
-            using var image = PixelsorterClassLib.Image.NdarrayToImgData(ndArray);
-
-            Assert.Equal(2, image.Width);
-            Assert.Equal(1, image.Height);
-
-            Assert.Equal(new Rgba32(255, 128, 64, 100), image[0, 0]);
-            Assert.Equal(new Rgba32(10, 20, 30, 0), image[1, 0]);
-        }
-
-        [Fact]
-        public void NdarrayToImageData_ThrowsOnInvalidChannelCount()
-        {
-            var data = new byte[] { 255, 128 }; // 1x1 image, 2 channels
-            var ndArray = np.array(data).reshape(1, 1, 2);
-
-            Assert.Throws<InvalidOperationException>(() => PixelsorterClassLib.Image.NdarrayToImgData(ndArray));
+                Assert.Equal(2, loaded.Width);
+                Assert.Equal(1, loaded.Height);
+                Assert.Equal(new Rgba32(255, 128, 64, 100), loaded[0, 0]);
+                Assert.Equal(new Rgba32(10, 20, 30, 200), loaded[1, 0]);
+            }
+            finally
+            {
+                if (File.Exists(path)) File.Delete(path);
+            }
         }
     }
 }

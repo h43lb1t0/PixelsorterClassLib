@@ -1,5 +1,4 @@
-﻿using NumSharp;
-using PixelsorterClassLib;
+﻿using PixelsorterClassLib;
 using SixLabors.ImageSharp.PixelFormats;
 using System.ComponentModel;
 

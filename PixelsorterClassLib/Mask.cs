@@ -1,7 +1,6 @@
 ﻿using HuggingfaceHub;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
-using NumSharp;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
@@ -346,36 +345,29 @@ namespace PixelsorterClassLib
         }
 
         /// <summary>
-        /// Generates a mask image from the specified input image and returns it as an NDArray.
+        /// Generates mask images from the specified input image.
         /// </summary>
-        /// <remarks>The method creates a temporary mask image file named 'mask.png', which is deleted
-        /// after the mask is loaded and returned.</remarks>
         /// <param name="inputImagePath">The file path of the input image from which the mask will be generated. This must reference a valid image
         /// file.</param>
         /// <param name="fadeWidth">The width, in pixels, of the fade effect applied to the mask. Must be a non-negative integer. The default
         /// value is 30.</param>
-        /// <returns>An NDArray containing the generated mask image.</returns>
+        /// <returns>The generated mask and inverted mask images.</returns>
         /// <exception cref="InvalidOperationException">Thrown if the input image cannot be loaded from the specified path.</exception>
-        public (NDArray mask, NDArray invertMask) GetMask(String inputImagePath, int fadeWidth = 30, bool invert = false)
+        public (Image<L8> mask, Image<L8> invertMask) GetMask(String inputImagePath, int fadeWidth = 30, bool invert = false)
         {
             using var inputBitmap = SixLabors.ImageSharp.Image.Load<Rgb24>(inputImagePath);
             LoadModel();
-            (var mask, var invertmask) = CreateMask(inputBitmap, fadeWidth);
-            using (mask)
-            using (invertmask)
-            {
-                return (ConvertMaskToNdArray(mask), ConvertMaskToNdArray(invertmask));
-            }
+            return CreateMask(inputBitmap, fadeWidth);
         }
 
         /// <summary>
-        /// Asynchronously generates a mask image from the specified input image and returns it as an NDArray.
+        /// Asynchronously generates mask images from the specified input image.
         /// </summary>
         /// <param name="inputImagePath">Path to the image file to process.</param>
         /// <param name="fadeWidth">Fade width in pixels applied to the mask edges.</param>
         /// <param name="cancellationToken">Token to cancel the work.</param>
-        /// <returns>A task returning the generated mask as an NDArray.</returns>
-        public Task<(NDArray mask, NDArray invertMask)> GetMaskAsync(string inputImagePath, int fadeWidth = 30, bool invert = false, CancellationToken cancellationToken = default)
+        /// <returns>A task returning the generated mask and inverted mask.</returns>
+        public Task<(Image<L8> mask, Image<L8> invertMask)> GetMaskAsync(string inputImagePath, int fadeWidth = 30, bool invert = false, CancellationToken cancellationToken = default)
         {
             return Task.Run(() =>
             {
@@ -384,33 +376,8 @@ namespace PixelsorterClassLib
                 cancellationToken.ThrowIfCancellationRequested();
                 LoadModel();
                 cancellationToken.ThrowIfCancellationRequested();
-                (var mask, var invertmask) = CreateMask(inputBitmap, fadeWidth);
-                using (mask)
-                using (invertmask)
-                {
-                    return (ConvertMaskToNdArray(mask), ConvertMaskToNdArray(invertmask));
-                }
+                return CreateMask(inputBitmap, fadeWidth);
             }, cancellationToken);
-        }
-
-        private static NDArray ConvertMaskToNdArray(Image<L8> mask)
-        {
-            var data = new byte[mask.Height * mask.Width];
-
-            mask.ProcessPixelRows(accessor =>
-            {
-                for (int y = 0; y < mask.Height; y++)
-                {
-                    var row = accessor.GetRowSpan(y);
-                    int rowOffset = y * mask.Width;
-                    for (int x = 0; x < mask.Width; x++)
-                    {
-                        data[rowOffset + x] = row[x].PackedValue;
-                    }
-                }
-            });
-
-            return np.array(data).reshape(new Shape(mask.Height, mask.Width, 1));
         }
     }
 }
