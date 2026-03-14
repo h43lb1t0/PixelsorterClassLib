@@ -20,13 +20,13 @@ namespace PixelsorterClassLib.Masks
         /// <summary>
         /// Sets the threshold value used for fade calculations as a percentage.
         /// </summary>
-        /// <param name="fadeWidth">The fade width percentage to set as the threshold. Must be greater than 0 and less than or equal to 100.</param>
-        /// <exception cref="ArgumentException">Thrown if <paramref name="fadeWidth"/> is less than or equal to 0, or greater than 100.</exception>
+        /// <param name="fadeWidth">The fade width percentage to set as the threshold. Must be in (0, 100].</param>
+        /// <exception cref="ArgumentException">Thrown if <paramref name="fadeWidth"/> is not in (0, 100].</exception>
         private void SetThreshold(int fadeWidth)
         {
             if (fadeWidth <= 0 || fadeWidth > 100)
             {
-                throw new ArgumentException("Threshold needs to be betwenn 0 and 100 (%)");
+                throw new ArgumentException("Threshold needs to be betwenn range (0, 100] (%)");
             }
             threshold = fadeWidth / 100f;
         }
