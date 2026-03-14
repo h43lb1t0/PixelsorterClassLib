@@ -15,7 +15,7 @@ namespace PixelsorterClassLib.Masks
         /// and higher values resulting in fewer edges. The threshold is calculated as a percentage of the maximum pixel intensity (255) 
         /// and is set based on the provided fadeWidth parameter, which should be between 0 and 100.
         /// </summary>
-        private int threshold;
+        private float threshold = 0.3f;
 
         /// <summary>
         /// Sets the threshold value used for fade calculations as a percentage.
@@ -28,8 +28,7 @@ namespace PixelsorterClassLib.Masks
             {
                 throw new ArgumentException("Threshold needs to be betwenn 0 and 100 (%)");
             }
-
-            threshold = fadeWidth / 100;
+            threshold = fadeWidth / 100f;
         }
 
         /// <summary>

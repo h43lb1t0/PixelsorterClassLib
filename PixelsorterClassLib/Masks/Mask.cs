@@ -30,9 +30,9 @@ namespace PixelsorterClassLib.Masks
             return true;
         }
 
-        public abstract(NDArray mask, NDArray invertedMask) GetMask(String imagePath, int fadeWidth = 0);
+        public abstract(NDArray mask, NDArray invertedMask) GetMask(String imagePath, int fadeWidth);
 
-        public abstract Task<(NDArray mask, NDArray invertedMask)> GetMaskAsync(String imagePath, int fadeWidth = 0, CancellationToken cancellationToken = default);
+        public abstract Task<(NDArray mask, NDArray invertedMask)> GetMaskAsync(String imagePath, int fadeWidth, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Converts a single-channel grayscale image mask to an NDArray with shape (height, width, 1).

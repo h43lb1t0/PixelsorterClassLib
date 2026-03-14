@@ -19,7 +19,6 @@ internal class Program
 {
     private static void Main(string[] args)
     {
-        Mask mask;
 
         String inputImagePath = "D:\\Documents\\codeing\\PixelsorterProject\\PixelsorterClassLib\\ConsoleApp\\examples\\alone-4480442.jpg";
         String outputDirectory = "D:\\Documents\\codeing\\PixelsorterProject\\PixelsorterClassLib\\ConsoleApp\\examples\\";
@@ -62,15 +61,15 @@ internal class Program
         Mask background = new BackgroundMask();
 
         var (cannyMask, cannyInvertedMask) = canny.GetMask(inputImagePath, 30);
-        var (backgroundMask, backgroundInvertedMask) = background.GetMask(inputImagePath, 30);
+        var (backgroundMask, backgroundInvertedMask) = background.GetMask(inputImagePath, 15);
 
         var sub = PixelsorterClassLib.Masks.MaskCombiner.SubtractMasks(backgroundMask, cannyInvertedMask);
         var add = PixelsorterClassLib.Masks.MaskCombiner.AddMasks(backgroundMask, cannyMask);
 
         var img = PixelsorterClassLib.Core.Image.LoadImage(inputImagePath);
 
-        var sortedImg = PixelsorterClassLib.Core.Sorter.SortImage(img, SortBy.Brightness(), SortDirections.ColumnBottomToTop, sub);
-        var sortedImgAdd = PixelsorterClassLib.Core.Sorter.SortImage(img, SortBy.Brightness(), SortDirections.ColumnBottomToTop, add);
+        var sortedImg = PixelsorterClassLib.Core.Sorter.SortImage(img, SortBy.Saturation(), SortDirections.RowLeftToRight, sub);
+        var sortedImgAdd = PixelsorterClassLib.Core.Sorter.SortImage(img, SortBy.Saturation(), SortDirections.RowLeftToRight, add);
 
         PixelsorterClassLib.Core.Image.SaveImage(sub, $"{outputDirectory}mask_subtracted.png");
         PixelsorterClassLib.Core.Image.SaveImage(add, $"{outputDirectory}mask_added.png");
