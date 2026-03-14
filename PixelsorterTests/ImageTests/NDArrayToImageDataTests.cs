@@ -1,4 +1,5 @@
 ﻿using NumSharp;
+using PixelsorterClassLib.Core;
 using SixLabors.ImageSharp.PixelFormats;
 using System;
 using System.Collections.Generic;
@@ -16,7 +17,7 @@ namespace Pixelsorter.Tests.ImageTests
             var data = new byte[] { 255, 128, 64, 10, 20, 30 }; // 1x2 image
             var ndArray = np.array(data).reshape(1, 2, 3);
 
-            using var image = PixelsorterClassLib.Image.NdarrayToImgData(ndArray);
+            using var image = Image.NdarrayToImgData(ndArray);
 
             Assert.Equal(2, image.Width);
             Assert.Equal(1, image.Height);
@@ -32,7 +33,7 @@ namespace Pixelsorter.Tests.ImageTests
             var data = new byte[] { 255, 128 }; // 1x2 image
             var ndArray = np.array(data).reshape(1, 2, 1);
 
-            using var image = PixelsorterClassLib.Image.NdarrayToImgData(ndArray);
+            using var image = Image.NdarrayToImgData(ndArray);
 
             Assert.Equal(2, image.Width);
             Assert.Equal(1, image.Height);
@@ -48,7 +49,7 @@ namespace Pixelsorter.Tests.ImageTests
             var data = new byte[] { 255, 128, 64, 100, 10, 20, 30, 0 }; // 1x2 image
             var ndArray = np.array(data).reshape(1, 2, 4);
 
-            using var image = PixelsorterClassLib.Image.NdarrayToImgData(ndArray);
+            using var image = Image.NdarrayToImgData(ndArray);
 
             Assert.Equal(2, image.Width);
             Assert.Equal(1, image.Height);
@@ -63,7 +64,7 @@ namespace Pixelsorter.Tests.ImageTests
             var data = new byte[] { 255, 128 }; // 1x1 image, 2 channels
             var ndArray = np.array(data).reshape(1, 1, 2);
 
-            Assert.Throws<InvalidOperationException>(() => PixelsorterClassLib.Image.NdarrayToImgData(ndArray));
+            Assert.Throws<InvalidOperationException>(() => Image.NdarrayToImgData(ndArray));
         }
     }
 }

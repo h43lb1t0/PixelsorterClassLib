@@ -2,7 +2,7 @@
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 
-namespace PixelsorterClassLib;
+namespace PixelsorterClassLib.Core;
 
 /// <summary>
 /// Provides methods for sorting image data based on specified criteria.

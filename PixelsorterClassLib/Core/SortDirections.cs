@@ -1,4 +1,4 @@
-﻿namespace PixelsorterClassLib
+﻿namespace PixelsorterClassLib.Core
 {
 
     /// <summary>
