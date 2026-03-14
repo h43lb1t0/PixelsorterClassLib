@@ -365,3 +365,7 @@ FodyWeavers.xsd
 # Output files
 ConsoleApp/examples/output_*
 /.github/copilot-instructions.md
+/ConsoleApp/examples/inverted_mask_BackgroundMask.png
+/ConsoleApp/examples/inverted_mask_CannyMask.png
+/ConsoleApp/examples/sorted_BackgroundMask.png
+/ConsoleApp/examples/sorted_CannyMask.png
