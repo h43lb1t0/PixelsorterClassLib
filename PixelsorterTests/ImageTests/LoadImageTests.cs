@@ -1,4 +1,4 @@
-﻿using PixelsorterClassLib.core;
+﻿using PixelsorterClassLib.Core;
 
 namespace Pixelsorter.Tests.ImageTests
 {
