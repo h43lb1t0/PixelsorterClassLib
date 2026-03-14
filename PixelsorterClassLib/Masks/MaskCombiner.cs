@@ -9,14 +9,14 @@ namespace PixelsorterClassLib.Masks
         /// Subtracts one mask array from another and returns the resulting mask.
         /// </summary>
         /// <param name="minuendMask">The mask array from which values will be subtracted. Must be compatible in shape with <paramref
-        /// name="subthrahendMask"/>.</param>
-        /// <param name="subthrahendMask">The mask array to subtract from <paramref name="minuendMask"/>. Must be compatible in shape with <paramref
+        /// name="subtrahendMask"/>.</param>
+        /// <param name="subtrahendMask">The mask array to subtract from <paramref name="minuendMask"/>. Must be compatible in shape with <paramref
         /// name="minuendMask"/>.</param>
-        /// <returns>An NDArray representing the result of subtracting <paramref name="subthrahendMask"/> from <paramref
+        /// <returns>An NDArray representing the result of subtracting <paramref name="subtrahendMask"/> from <paramref
         /// name="minuendMask"/>.</returns>
-        public static NDArray SubtractMasks(NDArray minuendMask, NDArray subthrahendMask)
+        public static NDArray SubtractMasks(NDArray minuendMask, NDArray subtrahendMask)
         {
-            var combinedMask = minuendMask - subthrahendMask;
+            var combinedMask = minuendMask - subtrahendMask;
             return combinedMask;
         }
 

@@ -25,9 +25,9 @@ namespace PixelsorterClassLib.Masks
         /// </summary>
         /// <returns>A task that represents the asynchronous operation. The task result is <see langword="true"/> if the model
         /// was downloaded successfully; otherwise, <see langword="false"/>.</returns>
-        public virtual async Task<bool> DownloadModel()
+        public virtual Task<bool> DownloadModel()
         {
-            return true;
+            return Task.FromResult(true);
         }
 
         public abstract(NDArray mask, NDArray invertedMask) GetMask(String imagePath, int fadeWidth);
