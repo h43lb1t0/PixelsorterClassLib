@@ -1,7 +1,7 @@
 ﻿using SixLabors.ImageSharp.PixelFormats;
 using System.Reflection;
 
-namespace PixelsorterClassLib;
+namespace PixelsorterClassLib.Core;
 
 /// <summary>
 /// Defines static methods that return a lambda function to sort a 2D array of pixel data based on a specific criterion (e.g., brightness, hue, saturation).

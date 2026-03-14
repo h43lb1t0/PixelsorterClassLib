@@ -1,7 +1,10 @@
 ﻿using NumSharp;
-using PixelsorterClassLib;
 using SixLabors.ImageSharp.PixelFormats;
 using System.ComponentModel;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Processing;
+using PixelsorterClassLib.Masks;
+using PixelsorterClassLib.Core;
 
 /// <summary>
 /// Provides the entry point for the application, orchestrating the process of loading an image, applying multiple
@@ -16,42 +19,41 @@ internal class Program
 {
     private static void Main(string[] args)
     {
-        /*
-        string inputPath = "ConsoleApp/examples/alone-4480442.jpg";
-        var imageData = Image.LoadImage(inputPath);
+        Mask mask;
 
-        var mask = new Mask().GetMask(inputPath, 50);
-        
-        Image.SaveImage(mask, "ConsoleApp/examples/mask.png");
+        String inputImagePath = "D:\\Documents\\codeing\\PixelsorterProject\\PixelsorterClassLib\\ConsoleApp\\examples\\alone-4480442.jpg";
+        String outputDirectory = "D:\\Documents\\codeing\\PixelsorterProject\\PixelsorterClassLib\\ConsoleApp\\examples\\";
 
-        var sortedData = Sorter.SortImage(imageData, SortBy.Warmth(), SortDirections.RowLeftToRight, mask);
-        string outputPath = $"ConsoleApp/examples/output.jpg";
-        Image.SaveImage(sortedData, outputPath);
+        for (int i = 0; i < 2; i++) {
 
-        sortedData = Sorter.SortImage(imageData, SortBy.Saturation(), SortDirections.RowLeftToRight);
-        outputPath = $"ConsoleApp/examples/output2.jpg";
-        Image.SaveImage(sortedData, outputPath);
-
-
-        Dictionary<string, Func<Rgba32, float>> criteria = SortBy.GetAllSortingCriteria();
-
-        foreach (var criterion in criteria)
-        {
-            Console.WriteLine($"Sorting by {criterion.Key}...");
-
-
-            foreach (var direction in Enum.GetValues(typeof(SortDirections)).Cast<SortDirections>())
+            if (i == 1)
             {
-                Console.WriteLine($"  Sorting direction: {direction}...");
-                var sortedData = Sorter.SortImage(imageData, criterion.Value, direction, mask);
-                string outputPath = $"ConsoleApp/examples/output_{criterion.Key.ToLower()}_{direction}.jpg";
-                Image.SaveImage(sortedData, outputPath);
+                mask = new CannyMask();
+            }
+            else
+            {
+                mask = new BackgroundMask();
             }
 
+            if (!mask.IsReadyToUse)
+            {
+                Console.WriteLine($"Mask of type {mask.GetType().Name} is not ready to use. Attempting to download model...");
+                if (!mask.DownloadModel().Result)
+                {
+                    Console.WriteLine($"Failed to download model for mask of type {mask.GetType().Name}. Skipping this mask.");
+                    continue;
+                }
+            }
 
+            var (maskArray, invertedMaskArray) = mask.GetMask(inputImagePath, 30);
+
+            //PixelsorterClassLib.core.Image.SaveImage(maskArray, $"{outputDirectory}mask_{mask.GetType().Name}.png");
+            PixelsorterClassLib.Core.Image.SaveImage(invertedMaskArray, $"{outputDirectory}inverted_mask_{mask.GetType().Name}.png");
+
+            var img = PixelsorterClassLib.Core.Image.LoadImage(inputImagePath);
+            var sortedImg = PixelsorterClassLib.Core.Sorter.SortImage(img, SortBy.Brightness(), SortDirections.ColumnBottomToTop, invertedMaskArray);
+
+            PixelsorterClassLib.Core.Image.SaveImage(sortedImg, $"{outputDirectory}sorted_{mask.GetType().Name}.png");
         }
-
-    */
-
     }
 }

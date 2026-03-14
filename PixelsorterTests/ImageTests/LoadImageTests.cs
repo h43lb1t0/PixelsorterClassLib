@@ -1,4 +1,4 @@
-﻿using PixelsorterClassLib;
+﻿using PixelsorterClassLib.core;
 
 namespace Pixelsorter.Tests.ImageTests
 {
@@ -11,7 +11,7 @@ namespace Pixelsorter.Tests.ImageTests
             string path = ImageTestHelpers.CreateTestImage(extension, channels);
             try
             {
-                var image = PixelsorterClassLib.Image.LoadImage(path);
+                var image = Image.LoadImage(path);
 
                 Assert.NotNull(image);
             }
@@ -49,7 +49,7 @@ namespace Pixelsorter.Tests.ImageTests
             string path = ImageTestHelpers.CreateCoruptedImage(".png");
             try
             {
-                Assert.ThrowsAny<Exception>(() => PixelsorterClassLib.Image.LoadImage(path));
+                Assert.ThrowsAny<Exception>(() => Image.LoadImage(path));
             }
             finally
             {
@@ -64,7 +64,7 @@ namespace Pixelsorter.Tests.ImageTests
             string path = ImageTestHelpers.CreateTestImageWithAlpha(extension);
             try
             {
-                var image = PixelsorterClassLib.Image.LoadImage(path);
+                var image = Image.LoadImage(path);
                 Assert.NotNull(image);
             }
             finally
@@ -80,7 +80,7 @@ namespace Pixelsorter.Tests.ImageTests
             string path = ImageTestHelpers.CreateGrayscaleTestImage(extension);
             try
             {
-                var image = PixelsorterClassLib.Image.LoadImage(path);
+                var image = Image.LoadImage(path);
                 Assert.NotNull(image);
             }
             finally
