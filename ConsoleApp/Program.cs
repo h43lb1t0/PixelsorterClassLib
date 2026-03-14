@@ -24,6 +24,7 @@ internal class Program
         String inputImagePath = "D:\\Documents\\codeing\\PixelsorterProject\\PixelsorterClassLib\\ConsoleApp\\examples\\alone-4480442.jpg";
         String outputDirectory = "D:\\Documents\\codeing\\PixelsorterProject\\PixelsorterClassLib\\ConsoleApp\\examples\\";
 
+        /*
         for (int i = 0; i < 2; i++) {
 
             if (i == 1)
@@ -47,7 +48,7 @@ internal class Program
 
             var (maskArray, invertedMaskArray) = mask.GetMask(inputImagePath, 30);
 
-            //PixelsorterClassLib.core.Image.SaveImage(maskArray, $"{outputDirectory}mask_{mask.GetType().Name}.png");
+            PixelsorterClassLib.core.Image.SaveImage(maskArray, $"{outputDirectory}mask_{mask.GetType().Name}.png");
             PixelsorterClassLib.Core.Image.SaveImage(invertedMaskArray, $"{outputDirectory}inverted_mask_{mask.GetType().Name}.png");
 
             var img = PixelsorterClassLib.Core.Image.LoadImage(inputImagePath);
@@ -55,5 +56,27 @@ internal class Program
 
             PixelsorterClassLib.Core.Image.SaveImage(sortedImg, $"{outputDirectory}sorted_{mask.GetType().Name}.png");
         }
+        */
+
+        Mask canny = new CannyMask();
+        Mask background = new BackgroundMask();
+
+        var (cannyMask, cannyInvertedMask) = canny.GetMask(inputImagePath, 30);
+        var (backgroundMask, backgroundInvertedMask) = background.GetMask(inputImagePath, 30);
+
+        var sub = PixelsorterClassLib.Masks.MaskCombiner.SubtractMasks(backgroundMask, cannyInvertedMask);
+        var add = PixelsorterClassLib.Masks.MaskCombiner.AddMasks(backgroundMask, cannyMask);
+
+        var img = PixelsorterClassLib.Core.Image.LoadImage(inputImagePath);
+
+        var sortedImg = PixelsorterClassLib.Core.Sorter.SortImage(img, SortBy.Brightness(), SortDirections.ColumnBottomToTop, sub);
+        var sortedImgAdd = PixelsorterClassLib.Core.Sorter.SortImage(img, SortBy.Brightness(), SortDirections.ColumnBottomToTop, add);
+
+        PixelsorterClassLib.Core.Image.SaveImage(sub, $"{outputDirectory}mask_subtracted.png");
+        PixelsorterClassLib.Core.Image.SaveImage(add, $"{outputDirectory}mask_added.png");
+
+        PixelsorterClassLib.Core.Image.SaveImage(sortedImg, $"{outputDirectory}sorted_subtracted.png");
+        PixelsorterClassLib.Core.Image.SaveImage(sortedImgAdd, $"{outputDirectory}sorted_added.png");
+
     }
 }
