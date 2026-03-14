@@ -15,7 +15,8 @@ Below is a basic example demonstrating how to load an image, auto-generate a mas
 
 ```csharp
 using NumSharp;
-using PixelsorterClassLib;
+using PixelsorterClassLib.Core;
+using PixelsorterClassLib.Masks;
 
 string inputPath = "input.jpg";
 string outputPath = "output.jpg";
@@ -53,5 +54,11 @@ var criteria = SortBy.GetAllSortingCriteria();
 
 - **Image:** Handles reading and writing standard image formats directly to and from 3D `NumSharp` arrays.
 - **Sorter:** Contains the logic to traverse pixels sequentially based on a given direction and sort segment data.
-- **Mask:** Communicates with local Hugging Face ONNX models to produce object masks for region-specific sorting without requiring manual rotoscoping.
 - **SortBy:** Supplies multiple algorithmic lens evaluations for analyzing a given pixel's characteristics.
+- **SortDirections:** Defines the various directions in which pixels can be sorted (e.g., left-to-right, top-to-bottom).
+
+## Masks Components
+
+- **BackgroundMask:** Generates a binary mask isolating the background of an image.
+- **CannyMask:** Creates a binary mask based on edge detection using a Canny like algorithm.
+- **MaskCombiner:** Combines multiple binary masks into a single mask.
