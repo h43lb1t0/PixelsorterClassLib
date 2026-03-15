@@ -1,11 +1,6 @@
 ﻿using NumSharp;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
-using SkiaSharp;
-using System;
-using System.Collections.Generic;
-using System.Dynamic;
-using System.Text;
 
 namespace PixelsorterClassLib.Masks
 {
@@ -30,7 +25,7 @@ namespace PixelsorterClassLib.Masks
             return Task.FromResult(true);
         }
 
-        public abstract(NDArray mask, NDArray invertedMask) GetMask(String imagePath, int fadeWidth);
+        public abstract (NDArray mask, NDArray invertedMask) GetMask(String imagePath, int fadeWidth);
 
         public abstract Task<(NDArray mask, NDArray invertedMask)> GetMaskAsync(String imagePath, int fadeWidth, CancellationToken cancellationToken = default);
 
