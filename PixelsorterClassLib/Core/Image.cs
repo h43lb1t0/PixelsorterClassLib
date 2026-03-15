@@ -2,7 +2,7 @@
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 
-namespace PixelsorterClassLib;
+namespace PixelsorterClassLib.Core;
 
 /// <summary>
 /// Provides methods for loading and saving images in various formats using a 3D NumSharp array representation.

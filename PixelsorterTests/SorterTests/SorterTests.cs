@@ -1,5 +1,5 @@
-﻿using PixelsorterClassLib;
-using NumSharp;
+﻿using NumSharp;
+using PixelsorterClassLib.Core;
 
 namespace Pixelsorter.Tests.SorterTests
 {
@@ -20,7 +20,7 @@ namespace Pixelsorter.Tests.SorterTests
         {
             var imgData = SorterTestHelpers.CreateUnsortedImageData();
 
-            var sortedImage = Sorter.SortImage(imgData, PixelsorterClassLib.SortBy.Saturation(), SortDirections.RowLeftToRight);
+            var sortedImage = Sorter.SortImage(imgData, PixelsorterClassLib.Core.SortBy.Saturation(), SortDirections.RowLeftToRight);
 
             var expectedData = np.array([
                 ..SorterTestHelpers.Gray, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation,
@@ -37,7 +37,7 @@ namespace Pixelsorter.Tests.SorterTests
         {
             var imgData = SorterTestHelpers.CreateUnsortedImageData();
 
-            var sortedImage = Sorter.SortImage(imgData, PixelsorterClassLib.SortBy.Saturation(), SortDirections.RowRightToLeft);
+            var sortedImage = Sorter.SortImage(imgData, PixelsorterClassLib.Core.SortBy.Saturation(), SortDirections.RowRightToLeft);
 
             var expectedData = np.array([
                 ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.Gray,
@@ -54,7 +54,7 @@ namespace Pixelsorter.Tests.SorterTests
         {
             var imgData = SorterTestHelpers.CreateUnsortedImageData();
 
-            var sortedImage = Sorter.SortImage(imgData, PixelsorterClassLib.SortBy.Saturation(), SortDirections.ColumnTopToBottom);
+            var sortedImage = Sorter.SortImage(imgData, PixelsorterClassLib.Core.SortBy.Saturation(), SortDirections.ColumnTopToBottom);
 
             var expectedData = np.array([
                 ..SorterTestHelpers.Gray, ..SorterTestHelpers.Gray, ..SorterTestHelpers.Gray, ..SorterTestHelpers.Gray,
@@ -71,7 +71,7 @@ namespace Pixelsorter.Tests.SorterTests
         {
             var imgData = SorterTestHelpers.CreateUnsortedImageData();
 
-            var sortedImage = Sorter.SortImage(imgData, PixelsorterClassLib.SortBy.Saturation(), SortDirections.ColumnBottomToTop);
+            var sortedImage = Sorter.SortImage(imgData, PixelsorterClassLib.Core.SortBy.Saturation(), SortDirections.ColumnBottomToTop);
 
             var expectedData = np.array([
                 ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.HighSaturation,
@@ -88,7 +88,7 @@ namespace Pixelsorter.Tests.SorterTests
         {
             var imgData = SorterTestHelpers.CreateUnsortedImageData();
 
-            Assert.Throws<ArgumentException>(() => Sorter.SortImage(imgData, PixelsorterClassLib.SortBy.Saturation(), SortDirections.IntoMask));
+            Assert.Throws<ArgumentException>(() => Sorter.SortImage(imgData, PixelsorterClassLib.Core.SortBy.Saturation(), SortDirections.IntoMask));
         }
     }
 }

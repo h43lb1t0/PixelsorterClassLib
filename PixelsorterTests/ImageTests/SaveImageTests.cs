@@ -1,4 +1,4 @@
-﻿using PixelsorterClassLib;
+﻿using PixelsorterClassLib.Core;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -17,8 +17,8 @@ namespace Pixelsorter.Tests.ImageTests
             string outPath = Path.Combine(Path.GetTempPath(), $"test_save_image_{Guid.NewGuid()}{extension}");
             try
             {
-                var image = PixelsorterClassLib.Image.LoadImage(inPath);
-                PixelsorterClassLib.Image.SaveImage(image, outPath);
+                var image = Image.LoadImage(inPath);
+                Image.SaveImage(image, outPath);
 
                 Assert.True(File.Exists(outPath));
                 Assert.True(new FileInfo(outPath).Length > 0);
@@ -61,8 +61,8 @@ namespace Pixelsorter.Tests.ImageTests
             string outPath = Path.Combine(Path.GetTempPath(), $"test_save_image_alpha_{Guid.NewGuid()}{extension}");
             try
             {
-                var image = PixelsorterClassLib.Image.LoadImage(inPath);
-                PixelsorterClassLib.Image.SaveImage(image, outPath);
+                var image = Image.LoadImage(inPath);
+                Image.SaveImage(image, outPath);
 
                 Assert.True(File.Exists(outPath));
                 Assert.True(new FileInfo(outPath).Length > 0);
@@ -82,8 +82,8 @@ namespace Pixelsorter.Tests.ImageTests
             string outPath = Path.Combine(Path.GetTempPath(), $"test_save_image_grayscale_{Guid.NewGuid()}{extension}");
             try
             {
-                var image = PixelsorterClassLib.Image.LoadImage(inPath);
-                PixelsorterClassLib.Image.SaveImage(image, outPath);
+                var image = Image.LoadImage(inPath);
+                Image.SaveImage(image, outPath);
 
                 Assert.True(File.Exists(outPath));
                 Assert.True(new FileInfo(outPath).Length > 0);
