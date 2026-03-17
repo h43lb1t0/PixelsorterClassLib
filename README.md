@@ -62,3 +62,10 @@ var criteria = SortBy.GetAllSortingCriteria();
 - **BackgroundMask:** Generates a binary mask isolating the background of an image.
 - **CannyMask:** Creates a binary mask based on edge detection using a Canny like algorithm.
 - **MaskCombiner:** Combines multiple binary masks into a single mask.
+
+
+
+# License
+
+With the commit `4e8741cf` the license of this project changed from MIT to EUPL 1.2
+All changes, releases etc. done before this commit stay under the MIT license.
