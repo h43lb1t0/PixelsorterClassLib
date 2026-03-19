@@ -39,6 +39,7 @@ public class SortBy
     }
 
 
+
     /// <summary>
     /// Creates a function that evaluates how closely an HSL color matches a specified target hue, factoring in
     /// saturation and lightness.
@@ -101,6 +102,18 @@ public class SortBy
         };
     }
 
+
+    /// <summary>
+    /// Provides precomputed weights for each hue angle from 0 to 360 degrees, used in color processing algorithms.
+    /// </summary>
+    /// <remarks>Each element represents the weight for the corresponding hue angle, calculated using a
+    /// cosine-based formula. The array can be used to efficiently access hue weights without recalculating them at
+    /// runtime.</remarks>
+    private static readonly float[] HueWeights = Enumerable.Range(0, 361)
+    .Select(h => 0.675f + 0.325f * (float)Math.Cos(((h - 60f) / 360f) * 2.0 * Math.PI))
+    .ToArray();
+
+
     /// <summary>
     /// Creates a function that calculates the perceived vibrancy value of an HSL color, adjusted by a hue-dependent weighting
     /// factor.
@@ -112,11 +125,12 @@ public class SortBy
     /// colors.</returns>
     public static Func<Hsl, float> PerceivedVibrancy()
     {
+        var chroma = Chroma();
+
         return pixel =>
         {
-            float hueWeight = 0.675f + 0.325f * (float)Math.Cos(((pixel.H - 60f) / 360f) * 2.0 * Math.PI);
+            float hueWeight = HueWeights[(int)Math.Round(pixel.H) % 360];
 
-            var chroma = Chroma();
 
             return chroma(pixel) * hueWeight;
         };
