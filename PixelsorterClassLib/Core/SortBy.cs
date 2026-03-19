@@ -69,6 +69,15 @@ public class SortBy
         return TempHelper(210f);
     }
 
+
+    public static Func<Hsl, float> Vibrancy()
+    {
+        return pixel =>
+        {
+            return pixel.S * (1f - 2f * Math.Abs(pixel.L - 0.5f));
+        };
+    }
+
     /// <summary>
     /// A method that dynamcly return all the available sorting criteria as a dictionary of name and function pairs.
     /// </summary>
