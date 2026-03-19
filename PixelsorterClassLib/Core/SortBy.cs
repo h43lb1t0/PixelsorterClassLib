@@ -1,4 +1,6 @@
-﻿using SixLabors.ImageSharp.PixelFormats;
+﻿using SixLabors.ImageSharp.ColorSpaces;
+using SixLabors.ImageSharp.ColorSpaces.Conversion;
+using SixLabors.ImageSharp.PixelFormats;
 using System.Reflection;
 
 namespace PixelsorterClassLib.Core;
@@ -11,120 +13,78 @@ public class SortBy
     /// <summary>
     /// Returns a comparison function that sorts pixels by their hue value.
     /// </summary>
-    public static Func<Rgba32, float> Hue()
+    public static Func<Hsl, float> Hue()
     {
-        return pixel =>
-        {
-            float r = pixel.R / 255f;
-            float g = pixel.G / 255f;
-            float b = pixel.B / 255f;
-
-            float max = Math.Max(r, Math.Max(g, b));
-            float min = Math.Min(r, Math.Min(g, b));
-            float delta = max - min;
-
-            if (delta == 0)
-                return 0f;
-
-            float hue;
-            if (max == r)
-                hue = ((g - b) / delta) % 6;
-            else if (max == g)
-                hue = (b - r) / delta + 2;
-            else
-                hue = (r - g) / delta + 4;
-
-            hue *= 60;
-            if (hue < 0)
-                hue += 360;
-
-            return hue;
-        };
+        return pixel => pixel.H;
     }
 
     /// <summary>
     /// Returns a comparison function that sorts pixels by their brightness (luminance).
     /// </summary>
-    public static Func<Rgba32, float> Brightness()
+    public static Func<Hsl, float> Brightness()
     {
-        return pixel => 0.299f * pixel.R + 0.587f * pixel.G + 0.114f * pixel.B;
+        return pixel =>
+        {
+            var rgbPixel = ColorSpaceConverter.ToRgb(pixel);
+            return ((0.2126f * rgbPixel.R) + (0.7152f * rgbPixel.G) + (0.0722f * rgbPixel.B));
+        };
     }
 
     /// <summary>
     /// Returns a comparison function that sorts pixels by their saturation value.
     /// </summary>
-    public static Func<Rgba32, float> Saturation()
+    public static Func<Hsl, float> Saturation()
+    {
+        return pixel => pixel.S;
+    }
+
+    public static Func<Hsl, float> Lightness()
+    {
+        return pixel => pixel.L;
+    }
+
+
+    private static Func<Hsl, float> TempHelper(float targetHue)
     {
         return pixel =>
         {
-            float r = pixel.R / 255f;
-            float g = pixel.G / 255f;
-            float b = pixel.B / 255f;
+            float hueDiff = Math.Abs(pixel.H - targetHue);
+            float shortestHueDist = Math.Min(hueDiff, 360f - hueDiff);
 
-            float max = Math.Max(r, Math.Max(g, b));
-            float min = Math.Min(r, Math.Min(g, b));
-            float delta = max - min;
+            float hueFactor = 1f - (shortestHueDist / 180f);
 
-            if (max == 0)
-                return 0f;
+            float lightnessWeight = 1f - 2f * Math.Abs(pixel.L - 0.5f);
 
-            return delta / max;
+            return Math.Max(0f, hueFactor * pixel.S * lightnessWeight);
         };
     }
 
-    public static Func<Rgba32, float> Lightness()
+    public static Func<Hsl, float> Warmth()
     {
-        return pixel =>
-        {
-            float r = pixel.R / 255f;
-            float g = pixel.G / 255f;
-            float b = pixel.B / 255f;
-            float max = Math.Max(r, Math.Max(g, b));
-            float min = Math.Min(r, Math.Min(g, b));
-            return (max + min) / 2f;
-        };
+        return TempHelper(30f);
     }
 
-    public static Func<Rgba32, float> Warmth()
+    public static Func<Hsl, float> Coolness()
     {
-        return pixel =>
-        {
-            float r = pixel.R / 255f;
-            float g = pixel.G / 255f;
-            float b = pixel.B / 255f;
-            // Simple warmth calculation based on the red and blue channels
-            return r - b;
-        };
-    }
-
-    public static Func<Rgba32, float> Coolness()
-    {
-        return pixel =>
-        {
-            float r = pixel.R / 255f;
-            float g = pixel.G / 255f;
-            float b = pixel.B / 255f;
-            // Simple coolness calculation based on the blue and red channels
-            return b - r;
-        };
+        return TempHelper(210f);
     }
 
     /// <summary>
     /// A method that dynamcly return all the available sorting criteria as a dictionary of name and function pairs.
     /// </summary>
-    public static Dictionary<string, Func<Rgba32, float>> GetAllSortingCriteria()
+    public static Dictionary<string, Func<Hsl, float>> GetAllSortingCriteria()
     {
-        var result = new Dictionary<string, Func<Rgba32, float>>();
+        var result = new Dictionary<string, Func<Hsl, float>>();
         var type = typeof(SortBy);
 
         var methods = type.GetMethods(BindingFlags.Public | BindingFlags.Static)
-            .Where(m => m.ReturnType == typeof(Func<Rgba32, float>)
+            .Where(m => m.ReturnType == typeof(Func<Hsl, float>)
                      && m.GetParameters().Length == 0
                      && m.Name != nameof(GetAllSortingCriteria));
 
         foreach (var method in methods)
         {
-            var func = (Func<Rgba32, float>)method.Invoke(null, null);
+            var func = (Func<Hsl, float>)method.Invoke(null, null);
             result[method.Name] = func;
         }
 
