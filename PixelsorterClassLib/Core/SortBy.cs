@@ -86,14 +86,14 @@ public class SortBy
 
 
     /// <summary>
-    /// Creates a function that calculates the vibrancy of a color represented in HSL (Hue, Saturation, Lightness) color
+    /// Creates a function that calculates the Chroma of a color represented in HSL (Hue, Saturation, Lightness) color
     /// space.
     /// </summary>
-    /// <remarks>Vibrancy is computed based on the color's saturation and its distance from the midpoint of
+    /// <remarks>Chroma is computed based on the color's saturation and its distance from the midpoint of
     /// lightness. The returned value is higher for colors that are both saturated and not too close to pure black or
     /// white. This function can be used to assess the perceived vividness of a color.</remarks>
-    /// <returns>A function that takes an HSL color and returns its vibrancy as a floating-point value between 0 and 1.</returns>
-    public static Func<Hsl, float> Vibrancy()
+    /// <returns>A function that takes an HSL color and returns its Chroma as a floating-point value between 0 and 1.</returns>
+    public static Func<Hsl, float> Chroma()
     {
         return pixel =>
         {
@@ -102,23 +102,23 @@ public class SortBy
     }
 
     /// <summary>
-    /// Creates a function that calculates the chroma value of an HSL color, adjusted by a hue-dependent weighting
+    /// Creates a function that calculates the perceived vibrancy value of an HSL color, adjusted by a hue-dependent weighting
     /// factor.
     /// </summary>
-    /// <remarks>The chroma calculation is based on the HSL color model and incorporates a cosine-based
+    /// <remarks>The perceived vibrancy calculation is based on the HSL color model and incorporates a cosine-based
     /// adjustment to account for perceptual differences in chroma across hues.</remarks>
-    /// <returns>A function that takes an <see cref="Hsl"/> color and returns its chroma as a <see langword="float"/>, weighted
-    /// by the hue. The returned value represents the color's chroma intensity, where higher values indicate more vivid
+    /// <returns>A function that takes an <see cref="Hsl"/> color and returns its perceived vibrancy as a <see langword="float"/>, weighted
+    /// by the hue. The returned value represents the color's perceived vibrancy, where higher values indicate more vivid
     /// colors.</returns>
-    public static Func<Hsl, float> Chroma()
+    public static Func<Hsl, float> PerceivedVibrancy()
     {
         return pixel =>
         {
-            float chroma = (1f - Math.Abs(2f * pixel.L - 1f)) * pixel.S;
-
             float hueWeight = 0.675f + 0.325f * (float)Math.Cos(((pixel.H - 60f) / 360f) * 2.0 * Math.PI);
 
-            return chroma * hueWeight;
+            var chroma = Chroma();
+
+            return chroma(pixel) * hueWeight;
         };
     }
 
