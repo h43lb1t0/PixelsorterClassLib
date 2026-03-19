@@ -78,6 +78,18 @@ public class SortBy
         };
     }
 
+    public static Func<Hsl, float> Chroma()
+    {
+        return pixel =>
+        {
+            float chroma = (1f - Math.Abs(2f * pixel.L - 1f)) * pixel.S;
+
+            float hueWeight = 0.675f + 0.325f * (float)Math.Cos(((pixel.H - 60f) / 360f) * 2.0 * Math.PI);
+
+            return chroma * hueWeight;
+        };
+    }
+
     /// <summary>
     /// A method that dynamcly return all the available sorting criteria as a dictionary of name and function pairs.
     /// </summary>
