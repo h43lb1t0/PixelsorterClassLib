@@ -18,17 +18,6 @@ public class SortBy
         return pixel => pixel.H;
     }
 
-    /// <summary>
-    /// Returns a comparison function that sorts pixels by their brightness (luminance).
-    /// </summary>
-    public static Func<Hsl, float> Brightness()
-    {
-        return pixel =>
-        {
-            var rgbPixel = ColorSpaceConverter.ToRgb(pixel);
-            return ((0.2126f * rgbPixel.R) + (0.7152f * rgbPixel.G) + (0.0722f * rgbPixel.B));
-        };
-    }
 
     /// <summary>
     /// Returns a comparison function that sorts pixels by their saturation value.
