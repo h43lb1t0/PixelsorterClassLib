@@ -1,4 +1,4 @@
-﻿using NumSharp;
+using NumSharp;
 using PixelsorterClassLib.Core;
 
 namespace Pixelsorter.Tests.SorterTests
@@ -17,23 +17,23 @@ namespace Pixelsorter.Tests.SorterTests
                 ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.Gray,
                 ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.Gray, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation,
                 ..SorterTestHelpers.Gray, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.LowSaturation
-            ]).reshape(4, 4, 4);
+            ]).reshape(4, 4, 3);
 
-            Assert.Equal(expectedData.ToArray<byte>(), sortedImage.ToArray<byte>());
+            Assert.Equal(expectedData.ToArray<float>(), sortedImage.ToArray<float>());
         }
 
         [Fact]
         public void Sorter_SortIntoMask_WithMask_SortsPixelsAlongMaskRays()
         {
             var baseImageData = SorterTestHelpers.CreateUnsortedImageData();
-            var sourceData = baseImageData.ToArray<byte>();
+            var sourceData = baseImageData.ToArray<float>();
 
             SetPixel(sourceData, 1, 0, SorterTestHelpers.Gray);
             SetPixel(sourceData, 2, 0, SorterTestHelpers.HighSaturation);
             SetPixel(sourceData, 1, 1, SorterTestHelpers.Gray);
             SetPixel(sourceData, 1, 2, SorterTestHelpers.HighSaturation);
 
-            var imgData = np.array(sourceData).reshape(4, 4, 4);
+            var imgData = np.array(sourceData).reshape(4, 4, 3);
 
             var sortedImage = Sorter.SortImage(imgData, PixelsorterClassLib.Core.SortBy.Saturation(), SortDirections.IntoMask, CreateMask());
 
@@ -42,9 +42,9 @@ namespace Pixelsorter.Tests.SorterTests
                 ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.Gray,
                 ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.Gray, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation,
                 ..SorterTestHelpers.Gray, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.LowSaturation
-            ]).reshape(4, 4, 4);
+            ]).reshape(4, 4, 3);
 
-            Assert.Equal(expectedData.ToArray<byte>(), sortedImage.ToArray<byte>());
+            Assert.Equal(expectedData.ToArray<float>(), sortedImage.ToArray<float>());
         }
 
         [Fact]
@@ -59,9 +59,9 @@ namespace Pixelsorter.Tests.SorterTests
                 ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.Gray,
                 ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.Gray, ..SorterTestHelpers.HighSaturation,
                 ..SorterTestHelpers.Gray, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.LowSaturation
-            ]).reshape(4, 4, 4);
+            ]).reshape(4, 4, 3);
 
-            Assert.Equal(expectedData.ToArray<byte>(), sortedImage.ToArray<byte>());
+            Assert.Equal(expectedData.ToArray<float>(), sortedImage.ToArray<float>());
         }
 
         [Fact]
@@ -76,9 +76,9 @@ namespace Pixelsorter.Tests.SorterTests
                 ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.Gray,
                 ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation,
                 ..SorterTestHelpers.Gray, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.LowSaturation
-            ]).reshape(4, 4, 4);
+            ]).reshape(4, 4, 3);
 
-            Assert.Equal(expectedData.ToArray<byte>(), sortedImage.ToArray<byte>());
+            Assert.Equal(expectedData.ToArray<float>(), sortedImage.ToArray<float>());
         }
 
         [Fact]
@@ -93,9 +93,9 @@ namespace Pixelsorter.Tests.SorterTests
                 ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.Gray,
                 ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.Gray, ..SorterTestHelpers.Gray, ..SorterTestHelpers.HighSaturation,
                 ..SorterTestHelpers.Gray, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.LowSaturation
-            ]).reshape(4, 4, 4);
+            ]).reshape(4, 4, 3);
 
-            Assert.Equal(expectedData.ToArray<byte>(), sortedImage.ToArray<byte>());
+            Assert.Equal(expectedData.ToArray<float>(), sortedImage.ToArray<float>());
         }
 
         private static NDArray CreateMask()
@@ -108,9 +108,9 @@ namespace Pixelsorter.Tests.SorterTests
             }).reshape(4, 4, 1);
         }
 
-        private static void SetPixel(byte[] data, int x, int y, byte[] pixel)
+        private static void SetPixel(float[] data, int x, int y, float[] pixel)
         {
-            Array.Copy(pixel, 0, data, (y * 4 + x) * 4, 4);
+            Array.Copy(pixel, 0, data, (y * 4 + x) * 3, 3);
         }
 
     }
