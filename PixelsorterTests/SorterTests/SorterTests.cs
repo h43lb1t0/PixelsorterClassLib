@@ -1,19 +1,18 @@
-﻿using NumSharp;
+using NumSharp;
 using PixelsorterClassLib.Core;
 
 namespace Pixelsorter.Tests.SorterTests
 {
 
     /// <summary>
-    /// Tests for the sorting direction functionality of the PixelsorterClassLib using Saturation as the standdart sorting method. 
+    /// Tests for the sorting direction functionality of the PixelsorterClassLib using Saturation as the standard sorting method. 
     /// The sorting methods are NOT tested here, only the sorting directions. 
     /// The sorting methods are tested in the SortByTests class.
-    /// All tests use a 4x4 NDArray of Rgba32 pixels with varying saturation values to ensure that the sorting direction is correctly applied.
+    /// All tests use a 4x4 NDArray of HSL pixels with varying saturation values to ensure that the sorting direction is correctly applied.
     /// </summary>
     public class SorterTests
     {
         
-
 
         [Fact]
         public void Sorter_SortLeftToRight_SortsPixelsCorrectly()
@@ -27,9 +26,9 @@ namespace Pixelsorter.Tests.SorterTests
                 ..SorterTestHelpers.Gray, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation,
                 ..SorterTestHelpers.Gray, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation,
                 ..SorterTestHelpers.Gray, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation
-            ]).reshape(4, 4, 4);
+            ]).reshape(4, 4, 3);
 
-            Assert.Equal(expectedData.ToArray<byte>(), sortedImage.ToArray<byte>());
+            Assert.Equal(expectedData.ToArray<float>(), sortedImage.ToArray<float>());
         }
 
         [Fact]
@@ -44,9 +43,9 @@ namespace Pixelsorter.Tests.SorterTests
                 ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.Gray,
                 ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.Gray,
                 ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.Gray
-            ]).reshape(4, 4, 4);
+            ]).reshape(4, 4, 3);
 
-            Assert.Equal(expectedData.ToArray<byte>(), sortedImage.ToArray<byte>());
+            Assert.Equal(expectedData.ToArray<float>(), sortedImage.ToArray<float>());
         }
 
         [Fact]
@@ -61,9 +60,9 @@ namespace Pixelsorter.Tests.SorterTests
                 ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.LowSaturation,
                 ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.MidSaturation,
                 ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.HighSaturation
-            ]).reshape(4, 4, 4);
+            ]).reshape(4, 4, 3);
 
-            Assert.Equal(expectedData.ToArray<byte>(), sortedImage.ToArray<byte>());
+            Assert.Equal(expectedData.ToArray<float>(), sortedImage.ToArray<float>());
         }
 
         [Fact]
@@ -78,9 +77,9 @@ namespace Pixelsorter.Tests.SorterTests
                 ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.MidSaturation,
                 ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.LowSaturation,
                 ..SorterTestHelpers.Gray, ..SorterTestHelpers.Gray, ..SorterTestHelpers.Gray, ..SorterTestHelpers.Gray
-            ]).reshape(4, 4, 4);
+            ]).reshape(4, 4, 3);
 
-            Assert.Equal(expectedData.ToArray<byte>(), sortedImage.ToArray<byte>());
+            Assert.Equal(expectedData.ToArray<float>(), sortedImage.ToArray<float>());
         }
 
         [Fact]

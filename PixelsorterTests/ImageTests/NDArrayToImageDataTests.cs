@@ -1,9 +1,6 @@
-﻿using NumSharp;
+using NumSharp;
 using PixelsorterClassLib.Core;
 using SixLabors.ImageSharp.PixelFormats;
-using System;
-using System.Collections.Generic;
-using System.Text;
 using Xunit;
 
 namespace Pixelsorter.Tests.ImageTests
@@ -13,8 +10,8 @@ namespace Pixelsorter.Tests.ImageTests
         [Fact]
         public void NdarrayToImageData_ConvertsColorImageCorrectly()
         {
-            // 3 channels (RGB)
-            var data = new byte[] { 255, 128, 64, 10, 20, 30 }; // 1x2 image
+            // 3 channels (HSL) - pure red and pure green
+            var data = new float[] { 0f, 1f, 0.5f, 120f, 1f, 0.5f }; // 1x2 image
             var ndArray = np.array(data).reshape(1, 2, 3);
 
             using var image = Image.NdarrayToImgData(ndArray);
@@ -22,15 +19,15 @@ namespace Pixelsorter.Tests.ImageTests
             Assert.Equal(2, image.Width);
             Assert.Equal(1, image.Height);
 
-            Assert.Equal(new Rgba32(255, 128, 64, 255), image[0, 0]);
-            Assert.Equal(new Rgba32(10, 20, 30, 255), image[1, 0]);
+            Assert.Equal(new Rgba32(255, 0, 0, 255), image[0, 0]);
+            Assert.Equal(new Rgba32(0, 255, 0, 255), image[1, 0]);
         }
 
         [Fact]
         public void NdarrayToImageData_ConvertsGrayscaleImageCorrectly()
         {
-            // 1 channel (Grayscale)
-            var data = new byte[] { 255, 128 }; // 1x2 image
+            // 1 channel (Grayscale) - float values 0-1
+            var data = new float[] { 1.0f, 0.0f }; // 1x2 image: white and black
             var ndArray = np.array(data).reshape(1, 2, 1);
 
             using var image = Image.NdarrayToImgData(ndArray);
@@ -39,14 +36,14 @@ namespace Pixelsorter.Tests.ImageTests
             Assert.Equal(1, image.Height);
 
             Assert.Equal(new Rgba32(255, 255, 255, 255), image[0, 0]);
-            Assert.Equal(new Rgba32(128, 128, 128, 255), image[1, 0]);
+            Assert.Equal(new Rgba32(0, 0, 0, 255), image[1, 0]);
         }
 
         [Fact]
         public void NdarrayToImageData_ConvertsTransparentImageCorrectly()
         {
-            // 4 channels (RGBA)
-            var data = new byte[] { 255, 128, 64, 100, 10, 20, 30, 0 }; // 1x2 image
+            // 4 channels (HSL + Alpha) - pure red with full alpha, pure green with zero alpha
+            var data = new float[] { 0f, 1f, 0.5f, 1f, 120f, 1f, 0.5f, 0f }; // 1x2 image
             var ndArray = np.array(data).reshape(1, 2, 4);
 
             using var image = Image.NdarrayToImgData(ndArray);
@@ -54,14 +51,14 @@ namespace Pixelsorter.Tests.ImageTests
             Assert.Equal(2, image.Width);
             Assert.Equal(1, image.Height);
 
-            Assert.Equal(new Rgba32(255, 128, 64, 100), image[0, 0]);
-            Assert.Equal(new Rgba32(10, 20, 30, 0), image[1, 0]);
+            Assert.Equal(new Rgba32(255, 0, 0, 255), image[0, 0]);
+            Assert.Equal(new Rgba32(0, 255, 0, 0), image[1, 0]);
         }
 
         [Fact]
         public void NdarrayToImageData_ThrowsOnInvalidChannelCount()
         {
-            var data = new byte[] { 255, 128 }; // 1x1 image, 2 channels
+            var data = new float[] { 1f, 0.5f }; // 1x1 image, 2 channels
             var ndArray = np.array(data).reshape(1, 1, 2);
 
             Assert.Throws<InvalidOperationException>(() => Image.NdarrayToImgData(ndArray));
