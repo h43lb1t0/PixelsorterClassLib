@@ -12,7 +12,15 @@ namespace PixelsorterClassLib.Masks
     /// </summary>
     /// <param name="Threshold">The threshold value used to determine edge sensitivity. Higher values result in fewer detected edges. Must be
     /// non-negative.</param>
-    public record CannyMaskOptions(float Threshold) : MaskOptions;
+    public record CannyMaskOptions : MaskOptions
+    {
+        public float Threshold { get; init; }
+
+        public CannyMaskOptions(float threshold)
+        {
+            if (threshold < 0 || threshold >= 1) throw new ArgumentException("Threshold needs to be betwenn range (0, 1] (0,100 %)");
+        }
+    }
     
     public class CannyMask : Mask<CannyMaskOptions>
     {
@@ -24,20 +32,6 @@ namespace PixelsorterClassLib.Masks
         /// and should be in the range (0, 1].
         /// </summary>
         private float threshold = 0.3f;
-
-        /// <summary>
-        /// Sets the threshold value used for edge detection.
-        /// </summary>
-        /// <param name="_threshold">The threshold value to set. Must be in the range (0, 1].</param>
-        /// <exception cref="ArgumentException">Thrown if <paramref name="_threshold"/> is not in (0, 1].</exception>
-        private void SetThreshold(float _threshold)
-        {
-            if (_threshold <= 0 || _threshold > 1)
-            {
-                throw new ArgumentException("Threshold needs to be betwenn range (0, 100] (%)");
-            }
-            threshold = _threshold;
-        }
 
         /// <summary>
         /// Generates a binary mask and its inverted counterpart from the specified image using Canny-like edge
@@ -81,7 +75,7 @@ namespace PixelsorterClassLib.Masks
         /// the inverted mask. Both arrays will have the same dimensions as the input image.</returns>
         public override (NDArray mask, NDArray invertedMask) GetMask(string imagePath, CannyMaskOptions options)
         {
-            SetThreshold(options.Threshold);
+            this.threshold = options.Threshold;
             using var image = LoadImage(imagePath);
             (var mask, var invertedMask) = CreateCannyMask(image);
             return (ConvertMaskToNdArray(mask), ConvertMaskToNdArray(invertedMask));
@@ -101,7 +95,7 @@ namespace PixelsorterClassLib.Masks
         {
             return Task.Run(() =>
             {
-                SetThreshold(options.Threshold);
+                this.threshold = options.Threshold;
                 cancellationToken.ThrowIfCancellationRequested();
                 using var image = LoadImage(imagePath);
                 cancellationToken.ThrowIfCancellationRequested();
