@@ -6,7 +6,10 @@ using SixLabors.ImageSharp.Processing;
 
 namespace PixelsorterClassLib.Masks
 {
-    public class CannyMask : Mask
+
+    public record CannyMaskOptions(float threshold) : MaskOptions;
+    
+    public class CannyMask : Mask<CannyMaskOptions>
     {
 
         /// <summary>
@@ -22,13 +25,13 @@ namespace PixelsorterClassLib.Masks
         /// </summary>
         /// <param name="fadeWidth">The fade width percentage to set as the threshold. Must be in (0, 100].</param>
         /// <exception cref="ArgumentException">Thrown if <paramref name="fadeWidth"/> is not in (0, 100].</exception>
-        private void SetThreshold(int fadeWidth)
+        private void SetThreshold(float _threshold)
         {
-            if (fadeWidth <= 0 || fadeWidth > 100)
+            if (_threshold <= 0 || _threshold > 1)
             {
                 throw new ArgumentException("Threshold needs to be betwenn range (0, 100] (%)");
             }
-            threshold = fadeWidth / 100f;
+            threshold = _threshold;
         }
 
         /// <summary>
@@ -73,9 +76,9 @@ namespace PixelsorterClassLib.Masks
         /// <param name="fadeWidth">The threshold for the canny edge detection in percentage in range (0, 100]. Defaults to 30%</param>
         /// <returns>A tuple containing two NDArray objects: the first is the mask representing detected edges, and the second is
         /// the inverted mask. Both arrays will have the same dimensions as the input image.</returns>
-        public override (NDArray mask, NDArray invertedMask) GetMask(string imagePath, int fadeWidth = 30)
+        public override (NDArray mask, NDArray invertedMask) GetMask(string imagePath, CannyMaskOptions options)
         {
-            SetThreshold(fadeWidth);
+            SetThreshold(options.threshold);
             using var image = LoadImage(imagePath);
             (var mask, var invertedMask) = CreateCannyMask(image);
             return (ConvertMaskToNdArray(mask), ConvertMaskToNdArray(invertedMask));
@@ -92,11 +95,11 @@ namespace PixelsorterClassLib.Masks
         /// <param name="cancellationToken">A cancellation token that can be used to cancel the mask generation operation.</param>
         /// <returns>A task that represents the asynchronous operation. The result contains a tuple with the mask and inverted
         /// mask as NDArray objects.</returns>
-        public override Task<(NDArray mask, NDArray invertedMask)> GetMaskAsync(string imagePath, int fadeWidth = 30, CancellationToken cancellationToken = default)
+        public override Task<(NDArray mask, NDArray invertedMask)> GetMaskAsync(string imagePath, CannyMaskOptions options, CancellationToken cancellationToken = default)
         {
             return Task.Run(() =>
             {
-                SetThreshold(fadeWidth);
+                SetThreshold(options.threshold);
                 cancellationToken.ThrowIfCancellationRequested();
                 using var image = LoadImage(imagePath);
                 cancellationToken.ThrowIfCancellationRequested();
