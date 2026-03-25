@@ -19,6 +19,7 @@ namespace PixelsorterClassLib.Masks
         public CannyMaskOptions(float threshold)
         {
             if (threshold < 0 || threshold >= 1) throw new ArgumentException("Threshold needs to be betwenn range (0, 1] (0,100 %)");
+            Threshold = threshold;
         }
     }
     
