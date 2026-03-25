@@ -13,14 +13,19 @@ namespace PixelsorterClassLib.Masks
     /// Represents options for configuring a background mask with a specified fade width.
     /// </summary>
     /// <param name="FadeWidth">The width, in pixels, over which the background mask fades. Must be a non-negative integer.</param>
+    /// <param name="ConfidenceThreshold"> The confidence threshold for the model to choose what is Background and what is foreground. </param>
     public record BackgroundMaskOptions : MaskOptions
     {
         public int FadeWidth { get; init; }
+        public float ConfidenceThreshold { get; init; }
 
-        public BackgroundMaskOptions(int fadeWidth)
+        public BackgroundMaskOptions(int fadeWidth, float confidenceThreshold = 0.5f)
         {
             ArgumentOutOfRangeException.ThrowIfNegative(fadeWidth);
             FadeWidth = fadeWidth;
+
+            if (confidenceThreshold <= 0 || confidenceThreshold >= 1) throw new ArgumentOutOfRangeException("ConfidenceThreshold must be in range (0,1)");
+            ConfidenceThreshold = confidenceThreshold;
         }
     }
 
@@ -36,6 +41,7 @@ namespace PixelsorterClassLib.Masks
         private static InferenceSession? _session;
         private static string? _inputName;
         private static string? _outputName;
+        private float _confidenceThreshold = 0.5f;
         private static readonly object _sessionLock = new();
         private const int ModelInputSize = 1024;
         private static readonly string ModelCachePath = Path.Combine(
@@ -363,7 +369,7 @@ namespace PixelsorterClassLib.Masks
                     {
                         float normalizedX = originalWidth > 1 ? x / (float)(originalWidth - 1) : 0f;
                         var maskValue = GetMaskValueBilinear(outputTensor, maskHeight, maskWidth, normalizedY, normalizedX, min, max);
-                        byte grayValue = maskValue < 0.5f ? (byte)255 : (byte)0;
+                        byte grayValue = maskValue < this._confidenceThreshold ? (byte)255 : (byte)0;
                         maskRow[x] = new L8(grayValue);
                         invertedMaskRow[x] = new L8(grayValue == 255 ? (byte)0 : (byte)255);
                     }
@@ -393,6 +399,7 @@ namespace PixelsorterClassLib.Masks
         public override (NDArray mask, NDArray invertedMask) GetMask(String inputImagePath, BackgroundMaskOptions options)
         {
             using var inputImage = LoadImage(inputImagePath);
+            this._confidenceThreshold = options.ConfidenceThreshold;
             LoadModel();
             (var mask, var invertedMask) = CreateMask(inputImage, options.FadeWidth);
             return (ConvertMaskToNdArray(mask), ConvertMaskToNdArray(invertedMask));
@@ -410,6 +417,7 @@ namespace PixelsorterClassLib.Masks
             return Task.Run(() =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                this._confidenceThreshold = options.ConfidenceThreshold;
                 using var inputImage = LoadImage(inputImagePath);
                 cancellationToken.ThrowIfCancellationRequested();
                 LoadModel();
