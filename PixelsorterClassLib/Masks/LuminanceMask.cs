@@ -15,7 +15,18 @@ namespace PixelsorterClassLib.Masks
     /// </summary>
     /// <param name="ThresholdMultiplier">The multiplier applied to the luminance threshold to determine which pixels are included in the mask. Must be a
     /// non-negative value.</param>
-    public record LuminanceMaskOptions(float ThresholdMultiplier) : MaskOptions; 
+    public record LuminanceMaskOptions : MaskOptions
+    {
+        public float ThresholdMultiplier {  get; init; }
+
+        public LuminanceMaskOptions(float thresholdMultiplier)
+        {
+            if (thresholdMultiplier < 0 || thresholdMultiplier >= 1) throw new ArgumentException("ThresholdMultiplier needs to be betwenn range (0, 1] (0,100 %)");
+            ThresholdMultiplier = thresholdMultiplier;
+        }
+
+        
+    } 
 
     /// <summary>
     /// Provides a mask based on the luminance values of an image, generating binary masks by thresholding pixel
