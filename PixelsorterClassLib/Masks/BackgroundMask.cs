@@ -9,6 +9,8 @@ using SixLabors.ImageSharp.Processing;
 namespace PixelsorterClassLib.Masks
 {
 
+    public record BackgroundMaskOptions(int fadeWidth) : MaskOptions;
+
     /// <summary>
     /// Provides functionality to generate a mask from an input image using a pre-trained model.
     /// </summary>
@@ -16,7 +18,7 @@ namespace PixelsorterClassLib.Masks
     /// masks. It requires an input image path and can apply a fade effect to the edges of the generated mask. The model
     /// input size is fixed at 1024x1024 pixels, and the class handles image normalization and tensor extraction for
     /// model inference.</remarks>
-    public class BackgroundMask : Mask
+    public class BackgroundMask : Mask<BackgroundMaskOptions>
     {
         private static InferenceSession? _session;
         private static string? _inputName;
@@ -378,11 +380,11 @@ namespace PixelsorterClassLib.Masks
         /// value is 30.</param>
         /// <returns>An NDArray containing the generated mask image.</returns>
         /// <exception cref="InvalidOperationException">Thrown if the input image cannot be loaded from the specified path.</exception>
-        public override (NDArray mask, NDArray invertedMask) GetMask(String inputImagePath, int fadeWidth = 30)
+        public override (NDArray mask, NDArray invertedMask) GetMask(String inputImagePath, BackgroundMaskOptions options)
         {
             using var inputImage = LoadImage(inputImagePath);
             LoadModel();
-            (var mask, var invertedMask) = CreateMask(inputImage, fadeWidth);
+            (var mask, var invertedMask) = CreateMask(inputImage, options.fadeWidth);
             return (ConvertMaskToNdArray(mask), ConvertMaskToNdArray(invertedMask));
         }
 
@@ -393,7 +395,7 @@ namespace PixelsorterClassLib.Masks
         /// <param name="fadeWidth">Fade width in pixels applied to the mask edges.</param>
         /// <param name="cancellationToken">Token to cancel the work.</param>
         /// <returns>A task returning the generated mask as an NDArray.</returns>
-        public override Task<(NDArray mask, NDArray invertedMask)> GetMaskAsync(string inputImagePath, int fadeWidth = 30, CancellationToken cancellationToken = default)
+        public override Task<(NDArray mask, NDArray invertedMask)> GetMaskAsync(string inputImagePath, BackgroundMaskOptions options, CancellationToken cancellationToken = default)
         {
             return Task.Run(() =>
             {
@@ -402,7 +404,7 @@ namespace PixelsorterClassLib.Masks
                 cancellationToken.ThrowIfCancellationRequested();
                 LoadModel();
                 cancellationToken.ThrowIfCancellationRequested();
-                (var mask, var invertedMask) = CreateMask(inputImage, fadeWidth);
+                (var mask, var invertedMask) = CreateMask(inputImage, options.fadeWidth);
                 return (ConvertMaskToNdArray(mask), ConvertMaskToNdArray(invertedMask));
             }, cancellationToken);
         }
