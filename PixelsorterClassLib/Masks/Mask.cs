@@ -4,7 +4,24 @@ using SixLabors.ImageSharp.PixelFormats;
 
 namespace PixelsorterClassLib.Masks
 {
-    public abstract class Mask
+
+    /// <summary>
+    /// Represents the base class for specifying options used to configure masking behavior.
+    /// </summary>
+    /// <remarks>Inherit from this record to define specific masking options for use with masking operations
+    /// or components. This type is intended to be extended to provide concrete option sets.</remarks>
+    public abstract record MaskOptions();
+
+    /// <summary>
+    /// Provides a base class for image mask operations that support optional model-based processing and configurable
+    /// options.
+    /// </summary>
+    /// <remarks>This abstract class defines the contract for mask generation, including synchronous and
+    /// asynchronous methods for obtaining masks from images. Implementations may require downloading a model before
+    /// use; the readiness and download behavior are exposed via the IsReadyToUse property and DownloadModel method.
+    /// Derived classes should specify the requirements and behavior for their specific mask generation logic.</remarks>
+    /// <typeparam name="TOptions">The type of options used to configure the mask operation. Must inherit from MaskOptions.</typeparam>
+    public abstract class Mask<TOptions> where TOptions : MaskOptions
     {
         /// <summary>
         /// Gets a value indicating whether the object is ready to be used.
@@ -25,9 +42,10 @@ namespace PixelsorterClassLib.Masks
             return Task.FromResult(true);
         }
 
-        public abstract (NDArray mask, NDArray invertedMask) GetMask(String imagePath, int fadeWidth);
+        public abstract (NDArray mask, NDArray invertedMask) GetMask(String imagePath, TOptions options);
 
-        public abstract Task<(NDArray mask, NDArray invertedMask)> GetMaskAsync(String imagePath, int fadeWidth, CancellationToken cancellationToken = default);
+        public abstract Task<(NDArray mask, NDArray invertedMask)> GetMaskAsync(String imagePath, TOptions options, CancellationToken cancellationToken = default);
+
 
         /// <summary>
         /// Converts a single-channel grayscale image mask to an NDArray with shape (height, width, 1).

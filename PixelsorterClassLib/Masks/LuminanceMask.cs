@@ -1,4 +1,4 @@
-﻿using NumSharp;
+using NumSharp;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
@@ -8,14 +8,34 @@ using System.Text;
 
 namespace PixelsorterClassLib.Masks
 {
+
+
+    /// <summary>
+    /// Represents options for generating a mask based on luminance values, using a specified threshold multiplier.
+    /// </summary>
+    /// <param name="ThresholdMultiplier">The multiplier applied to the luminance threshold to determine which pixels are included in the mask. Must be a
+    /// non-negative value.</param>
+    public record LuminanceMaskOptions : MaskOptions
+    {
+        public float ThresholdMultiplier {  get; init; }
+
+        public LuminanceMaskOptions(float thresholdMultiplier)
+        {
+            if (thresholdMultiplier < 0 || thresholdMultiplier >= 1) throw new ArgumentException("ThresholdMultiplier needs to be betwenn range (0, 1] (0,100 %)");
+            ThresholdMultiplier = thresholdMultiplier;
+        }
+
+        
+    } 
+
     /// <summary>
     /// Provides a mask based on the luminance values of an image, generating binary masks by thresholding pixel
     /// intensities.
     /// </summary>
     /// <remarks>The luminance threshold is dynamically calculated based on the minimum and maximum pixel
-    /// values in the image and is influenced by the specified fade width. Thread safety is not guaranteed; concurrent
-    /// use of the same instance is not supported.</remarks>
-    public class LuminanceMask : Mask
+    /// values in the image and is influenced by the <see cref="LuminanceMaskOptions.ThresholdMultiplier"/>. 
+    /// Thread safety is not guaranteed; concurrent use of the same instance is not supported.</remarks>
+    public class LuminanceMask : Mask<LuminanceMaskOptions>
     {
 
         /// <summary>
@@ -74,20 +94,20 @@ namespace PixelsorterClassLib.Masks
             return Image.Load<L8>(inputImagePath) ?? throw new InvalidOperationException("Failed to load the input image.");
         }
 
-        public override (NDArray mask, NDArray invertedMask) GetMask(string imagePath, int fadeWidth)
+        public override (NDArray mask, NDArray invertedMask) GetMask(string imagePath, LuminanceMaskOptions options)
         {
             using var image = LoadImage(imagePath);
-            this.thresholdMultiplier = fadeWidth / 100f;
+            this.thresholdMultiplier = options.ThresholdMultiplier;
             return CreateLuminanceMask(image);
         }
 
-        public override Task<(NDArray mask, NDArray invertedMask)> GetMaskAsync(string imagePath, int fadeWidth, CancellationToken cancellationToken = default)
+        public override Task<(NDArray mask, NDArray invertedMask)> GetMaskAsync(string imagePath, LuminanceMaskOptions options, CancellationToken cancellationToken = default)
         {
             return Task.Run(() =>
             {
                 using var image = LoadImage(imagePath);
                 cancellationToken.ThrowIfCancellationRequested();
-                this.thresholdMultiplier = fadeWidth / 100f;
+                this.thresholdMultiplier = options.ThresholdMultiplier;
                 return CreateLuminanceMask(image);
             }, cancellationToken);
         }

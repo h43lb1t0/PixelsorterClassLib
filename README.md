@@ -24,13 +24,21 @@ string outputPath = "output.jpg";
 // 1. Load the image into an NDArray
 NDArray imageData = Image.LoadImage(inputPath);
 
-// 2. Generate a binary mask using ML inference
-NDArray mask = new Mask().GetMask(inputPath, 50);
+// 2. Get mask options
 
-// 3. Sort image by warmth, left to right, within the boundaries of the mask
+MaskOptions<BackgroundMaskOptions> options = new BackgroundMaskOptions(0.5f)
+
+// Simpler using var
+// var options = new BackgroundMask(0.5f)
+
+
+// 3. Generate a binary mask using ML inference
+NDArray mask = new BackgroundMask().GetMask(inputPath, options);
+
+// 4. Sort image by warmth, left to right, within the boundaries of the mask
 NDArray sortedData = Sorter.SortImage(imageData, SortBy.Warmth(), SortDirections.RowLeftToRight, mask);
 
-// 4. Save the sorted image to disk
+// 5. Save the sorted image to disk
 Image.SaveImage(sortedData, outputPath);
 ```
 
@@ -61,6 +69,7 @@ var criteria = SortBy.GetAllSortingCriteria();
 
 - **BackgroundMask:** Generates a binary mask isolating the background of an image.
 - **CannyMask:** Creates a binary mask based on edge detection using a Canny like algorithm.
+- **LuminanceMask** Creates a mask based on the luminance of the Image.
 - **MaskCombiner:** Combines multiple binary masks into a single mask.
 
 

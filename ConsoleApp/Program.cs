@@ -26,10 +26,10 @@ internal class Program
         var img = PixelsorterClassLib.Core.Image.LoadImage(inputImagePath);
 
 
-        Mask masker = new LuminanceMask();
+        var masker = new LuminanceMask();
 
 
-        (var o, var i) = masker.GetMask(inputImagePath, 30);
+        (var o, var i) = masker.GetMask(inputImagePath, new LuminanceMaskOptions(0.3f));
 
         var foo = Sorter.SortImage(img, SortBy.Warmth(), SortDirections.RowLeftToRight, o);
 

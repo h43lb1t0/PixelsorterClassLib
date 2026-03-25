@@ -1,4 +1,4 @@
-﻿using HuggingfaceHub;
+using HuggingfaceHub;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using NumSharp;
@@ -10,17 +10,38 @@ namespace PixelsorterClassLib.Masks
 {
 
     /// <summary>
+    /// Represents options for configuring a background mask with a specified fade width.
+    /// </summary>
+    /// <param name="FadeWidth">The width, in pixels, over which the background mask fades. Must be a non-negative integer.</param>
+    /// <param name="ConfidenceThreshold"> The confidence threshold for the model to choose what is Background and what is foreground. </param>
+    public record BackgroundMaskOptions : MaskOptions
+    {
+        public int FadeWidth { get; init; }
+        public float ConfidenceThreshold { get; init; }
+
+        public BackgroundMaskOptions(int fadeWidth, float confidenceThreshold = 0.5f)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(fadeWidth);
+            FadeWidth = fadeWidth;
+
+            if (confidenceThreshold <= 0 || confidenceThreshold >= 1) throw new ArgumentOutOfRangeException("ConfidenceThreshold must be in range (0,1)");
+            ConfidenceThreshold = confidenceThreshold;
+        }
+    }
+
+    /// <summary>
     /// Provides functionality to generate a mask from an input image using a pre-trained model.
     /// </summary>
     /// <remarks>This class internally manages the loading of the model and the processing of images to create
     /// masks. It requires an input image path and can apply a fade effect to the edges of the generated mask. The model
     /// input size is fixed at 1024x1024 pixels, and the class handles image normalization and tensor extraction for
     /// model inference.</remarks>
-    public class BackgroundMask : Mask
+    public class BackgroundMask : Mask<BackgroundMaskOptions>
     {
         private static InferenceSession? _session;
         private static string? _inputName;
         private static string? _outputName;
+        private float _confidenceThreshold = 0.5f;
         private static readonly object _sessionLock = new();
         private const int ModelInputSize = 1024;
         private static readonly string ModelCachePath = Path.Combine(
@@ -348,7 +369,7 @@ namespace PixelsorterClassLib.Masks
                     {
                         float normalizedX = originalWidth > 1 ? x / (float)(originalWidth - 1) : 0f;
                         var maskValue = GetMaskValueBilinear(outputTensor, maskHeight, maskWidth, normalizedY, normalizedX, min, max);
-                        byte grayValue = maskValue < 0.5f ? (byte)255 : (byte)0;
+                        byte grayValue = maskValue < this._confidenceThreshold ? (byte)255 : (byte)0;
                         maskRow[x] = new L8(grayValue);
                         invertedMaskRow[x] = new L8(grayValue == 255 ? (byte)0 : (byte)255);
                     }
@@ -370,19 +391,17 @@ namespace PixelsorterClassLib.Masks
         /// <summary>
         /// Generates a mask image from the specified input image and returns it as an NDArray.
         /// </summary>
-        /// <remarks>The method creates a temporary mask image file named 'mask.png', which is deleted
-        /// after the mask is loaded and returned.</remarks>
         /// <param name="inputImagePath">The file path of the input image from which the mask will be generated. This must reference a valid image
         /// file.</param>
-        /// <param name="fadeWidth">The width, in pixels, of the fade effect applied to the mask. Must be a non-negative integer. The default
-        /// value is 30.</param>
-        /// <returns>An NDArray containing the generated mask image.</returns>
+        /// <param name="options" cref="BackgroundMaskOptions" >The options controlling mask generation</param>
+        /// <returns>A tuple containing the generated mask and inverted mask as NDArrays.</returns>
         /// <exception cref="InvalidOperationException">Thrown if the input image cannot be loaded from the specified path.</exception>
-        public override (NDArray mask, NDArray invertedMask) GetMask(String inputImagePath, int fadeWidth = 30)
+        public override (NDArray mask, NDArray invertedMask) GetMask(String inputImagePath, BackgroundMaskOptions options)
         {
             using var inputImage = LoadImage(inputImagePath);
+            this._confidenceThreshold = options.ConfidenceThreshold;
             LoadModel();
-            (var mask, var invertedMask) = CreateMask(inputImage, fadeWidth);
+            (var mask, var invertedMask) = CreateMask(inputImage, options.FadeWidth);
             return (ConvertMaskToNdArray(mask), ConvertMaskToNdArray(invertedMask));
         }
 
@@ -390,19 +409,20 @@ namespace PixelsorterClassLib.Masks
         /// Asynchronously generates a mask image from the specified input image and returns it as an NDArray.
         /// </summary>
         /// <param name="inputImagePath">Path to the image file to process.</param>
-        /// <param name="fadeWidth">Fade width in pixels applied to the mask edges.</param>
+        /// <param name="options" cref="BackgroundMaskOptions" >The options controlling mask generation</param>
         /// <param name="cancellationToken">Token to cancel the work.</param>
-        /// <returns>A task returning the generated mask as an NDArray.</returns>
-        public override Task<(NDArray mask, NDArray invertedMask)> GetMaskAsync(string inputImagePath, int fadeWidth = 30, CancellationToken cancellationToken = default)
+        /// <returns>A task returning a tuple containing the generated mask and inverted mask as NDArrays.</returns>
+        public override Task<(NDArray mask, NDArray invertedMask)> GetMaskAsync(string inputImagePath, BackgroundMaskOptions options, CancellationToken cancellationToken = default)
         {
             return Task.Run(() =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                this._confidenceThreshold = options.ConfidenceThreshold;
                 using var inputImage = LoadImage(inputImagePath);
                 cancellationToken.ThrowIfCancellationRequested();
                 LoadModel();
                 cancellationToken.ThrowIfCancellationRequested();
-                (var mask, var invertedMask) = CreateMask(inputImage, fadeWidth);
+                (var mask, var invertedMask) = CreateMask(inputImage, options.FadeWidth);
                 return (ConvertMaskToNdArray(mask), ConvertMaskToNdArray(invertedMask));
             }, cancellationToken);
         }
