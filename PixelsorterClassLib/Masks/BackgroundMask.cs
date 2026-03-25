@@ -1,4 +1,4 @@
-﻿using HuggingfaceHub;
+using HuggingfaceHub;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using NumSharp;
@@ -9,6 +9,10 @@ using SixLabors.ImageSharp.Processing;
 namespace PixelsorterClassLib.Masks
 {
 
+    /// <summary>
+    /// Represents options for configuring a background mask with a specified fade width.
+    /// </summary>
+    /// <param name="fadeWidth">The width, in pixels, over which the background mask fades. Must be a non-negative integer.</param>
     public record BackgroundMaskOptions(int fadeWidth) : MaskOptions;
 
     /// <summary>
@@ -372,13 +376,10 @@ namespace PixelsorterClassLib.Masks
         /// <summary>
         /// Generates a mask image from the specified input image and returns it as an NDArray.
         /// </summary>
-        /// <remarks>The method creates a temporary mask image file named 'mask.png', which is deleted
-        /// after the mask is loaded and returned.</remarks>
         /// <param name="inputImagePath">The file path of the input image from which the mask will be generated. This must reference a valid image
         /// file.</param>
-        /// <param name="fadeWidth">The width, in pixels, of the fade effect applied to the mask. Must be a non-negative integer. The default
-        /// value is 30.</param>
-        /// <returns>An NDArray containing the generated mask image.</returns>
+        /// <param name="options">The options controlling mask generation, including the fade width applied to mask edges.</param>
+        /// <returns>A tuple containing the generated mask and inverted mask as NDArrays.</returns>
         /// <exception cref="InvalidOperationException">Thrown if the input image cannot be loaded from the specified path.</exception>
         public override (NDArray mask, NDArray invertedMask) GetMask(String inputImagePath, BackgroundMaskOptions options)
         {
@@ -392,9 +393,9 @@ namespace PixelsorterClassLib.Masks
         /// Asynchronously generates a mask image from the specified input image and returns it as an NDArray.
         /// </summary>
         /// <param name="inputImagePath">Path to the image file to process.</param>
-        /// <param name="fadeWidth">Fade width in pixels applied to the mask edges.</param>
+        /// <param name="options">The options controlling mask generation, including the fade width applied to mask edges.</param>
         /// <param name="cancellationToken">Token to cancel the work.</param>
-        /// <returns>A task returning the generated mask as an NDArray.</returns>
+        /// <returns>A task returning a tuple containing the generated mask and inverted mask as NDArrays.</returns>
         public override Task<(NDArray mask, NDArray invertedMask)> GetMaskAsync(string inputImagePath, BackgroundMaskOptions options, CancellationToken cancellationToken = default)
         {
             return Task.Run(() =>

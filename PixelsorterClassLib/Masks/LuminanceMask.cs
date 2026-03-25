@@ -1,4 +1,4 @@
-﻿using NumSharp;
+using NumSharp;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
@@ -10,6 +10,11 @@ namespace PixelsorterClassLib.Masks
 {
 
 
+    /// <summary>
+    /// Represents options for generating a mask based on luminance values, using a specified threshold multiplier.
+    /// </summary>
+    /// <param name="thresholdMultiplier">The multiplier applied to the luminance threshold to determine which pixels are included in the mask. Must be a
+    /// non-negative value.</param>
     public record LuminanceMaskOptions(float thresholdMultiplier) : MaskOptions; 
 
     /// <summary>
@@ -17,8 +22,8 @@ namespace PixelsorterClassLib.Masks
     /// intensities.
     /// </summary>
     /// <remarks>The luminance threshold is dynamically calculated based on the minimum and maximum pixel
-    /// values in the image and is influenced by the specified fade width. Thread safety is not guaranteed; concurrent
-    /// use of the same instance is not supported.</remarks>
+    /// values in the image and is influenced by the <see cref="LuminanceMaskOptions.thresholdMultiplier"/>. 
+    /// Thread safety is not guaranteed; concurrent use of the same instance is not supported.</remarks>
     public class LuminanceMask : Mask<LuminanceMaskOptions>
     {
 

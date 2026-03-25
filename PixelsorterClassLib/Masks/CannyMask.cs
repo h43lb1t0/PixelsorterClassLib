@@ -1,4 +1,4 @@
-﻿using NumSharp;
+using NumSharp;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
@@ -7,6 +7,11 @@ using SixLabors.ImageSharp.Processing;
 namespace PixelsorterClassLib.Masks
 {
 
+    /// <summary>
+    /// Specifies options for generating a mask using the Canny edge detection algorithm.
+    /// </summary>
+    /// <param name="threshold">The threshold value used to determine edge sensitivity. Higher values result in fewer detected edges. Must be
+    /// non-negative.</param>
     public record CannyMaskOptions(float threshold) : MaskOptions;
     
     public class CannyMask : Mask<CannyMaskOptions>
@@ -15,16 +20,16 @@ namespace PixelsorterClassLib.Masks
         /// <summary>
         /// The threshold value for the binary thresholding step in the Canny edge detection process. 
         /// This value determines the sensitivity of edge detection, with lower values resulting in more edges being detected 
-        /// and higher values resulting in fewer edges. The threshold is calculated as a percentage of the maximum pixel intensity (255) 
-        /// and is set based on the provided fadeWidth parameter, which should be between 0 and 100.
+        /// and higher values resulting in fewer edges. The threshold is set via <see cref="CannyMaskOptions.threshold"/> 
+        /// and should be in the range (0, 1].
         /// </summary>
         private float threshold = 0.3f;
 
         /// <summary>
-        /// Sets the threshold value used for fade calculations as a percentage.
+        /// Sets the threshold value used for edge detection.
         /// </summary>
-        /// <param name="fadeWidth">The fade width percentage to set as the threshold. Must be in (0, 100].</param>
-        /// <exception cref="ArgumentException">Thrown if <paramref name="fadeWidth"/> is not in (0, 100].</exception>
+        /// <param name="_threshold">The threshold value to set. Must be in the range (0, 1].</param>
+        /// <exception cref="ArgumentException">Thrown if <paramref name="_threshold"/> is not in (0, 1].</exception>
         private void SetThreshold(float _threshold)
         {
             if (_threshold <= 0 || _threshold > 1)
@@ -67,13 +72,11 @@ namespace PixelsorterClassLib.Masks
         }
 
         /// <summary>
-        /// Generates a mask and an inverted mask from the specified image using edge detection, with optional fading at
-        /// the mask boundaries.
+        /// Generates a mask and an inverted mask from the specified image using edge detection.
         /// </summary>
-        /// <remarks>The method uses Canny edge detection to create the masks. Increasing the fade width
-        /// softens the mask boundaries, which can be useful for blending or compositing operations.</remarks>
+        /// <remarks>The method uses Canny edge detection to create the masks.</remarks>
         /// <param name="imagePath">The file path to the image from which the mask will be generated. Cannot be null or empty.</param>
-        /// <param name="fadeWidth">The threshold for the canny edge detection in percentage in range (0, 100]. Defaults to 30%</param>
+        /// <param name="options">The options controlling mask generation, including the edge detection threshold.</param>
         /// <returns>A tuple containing two NDArray objects: the first is the mask representing detected edges, and the second is
         /// the inverted mask. Both arrays will have the same dimensions as the input image.</returns>
         public override (NDArray mask, NDArray invertedMask) GetMask(string imagePath, CannyMaskOptions options)
@@ -85,13 +88,12 @@ namespace PixelsorterClassLib.Masks
         }
 
         /// <summary>
-        /// Generates a binary mask and its inverted mask for the specified image using edge detection, with optional
-        /// fade width adjustment.
+        /// Generates a binary mask and its inverted mask for the specified image using edge detection.
         /// </summary>
         /// <remarks>The mask is generated using a Canny edge detection algorithm. The operation is
         /// performed asynchronously and supports cancellation.</remarks>
         /// <param name="imagePath">The file path of the image to process. Must refer to a valid image file.</param>
-        /// <param name="fadeWidth">The threshold for the canny edge detection in percentage in range (0, 100]. Defaults to 30%</param>
+        /// <param name="options">The options controlling mask generation, including the edge detection threshold.</param>
         /// <param name="cancellationToken">A cancellation token that can be used to cancel the mask generation operation.</param>
         /// <returns>A task that represents the asynchronous operation. The result contains a tuple with the mask and inverted
         /// mask as NDArray objects.</returns>
