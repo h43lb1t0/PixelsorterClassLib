@@ -89,14 +89,10 @@ namespace PixelsorterClassLib.Masks
             return (ConvertMaskToNdArray(mask), ConvertMaskToNdArray(image));
         }
 
-        private Image<L8> LoadImage(string inputImagePath)
-        {
-            return Image.Load<L8>(inputImagePath) ?? throw new InvalidOperationException("Failed to load the input image.");
-        }
 
         public override (NDArray mask, NDArray invertedMask) GetMask(string imagePath, LuminanceMaskOptions options)
         {
-            using var image = LoadImage(imagePath);
+            using var image = LoadL8Image(imagePath);
             this.thresholdMultiplier = options.ThresholdMultiplier;
             return CreateLuminanceMask(image);
         }
@@ -105,7 +101,7 @@ namespace PixelsorterClassLib.Masks
         {
             return Task.Run(() =>
             {
-                using var image = LoadImage(imagePath);
+                using var image = LoadL8Image(imagePath);
                 cancellationToken.ThrowIfCancellationRequested();
                 this.thresholdMultiplier = options.ThresholdMultiplier;
                 return CreateLuminanceMask(image);
