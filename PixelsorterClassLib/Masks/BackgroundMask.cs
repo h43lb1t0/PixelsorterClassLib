@@ -393,7 +393,7 @@ namespace PixelsorterClassLib.Masks
         /// </summary>
         /// <param name="inputImagePath">The file path of the input image from which the mask will be generated. This must reference a valid image
         /// file.</param>
-        /// <param name="options">The options controlling mask generation, including the fade width applied to mask edges.</param>
+        /// <param name="options" cref="BackgroundMaskOptions" >The options controlling mask generation</param>
         /// <returns>A tuple containing the generated mask and inverted mask as NDArrays.</returns>
         /// <exception cref="InvalidOperationException">Thrown if the input image cannot be loaded from the specified path.</exception>
         public override (NDArray mask, NDArray invertedMask) GetMask(String inputImagePath, BackgroundMaskOptions options)
@@ -409,7 +409,7 @@ namespace PixelsorterClassLib.Masks
         /// Asynchronously generates a mask image from the specified input image and returns it as an NDArray.
         /// </summary>
         /// <param name="inputImagePath">Path to the image file to process.</param>
-        /// <param name="options">The options controlling mask generation, including the fade width applied to mask edges.</param>
+        /// <param name="options" cref="BackgroundMaskOptions" >The options controlling mask generation</param>
         /// <param name="cancellationToken">Token to cancel the work.</param>
         /// <returns>A task returning a tuple containing the generated mask and inverted mask as NDArrays.</returns>
         public override Task<(NDArray mask, NDArray invertedMask)> GetMaskAsync(string inputImagePath, BackgroundMaskOptions options, CancellationToken cancellationToken = default)
