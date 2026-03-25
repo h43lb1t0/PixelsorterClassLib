@@ -13,16 +13,16 @@ namespace PixelsorterClassLib.Masks
     /// <summary>
     /// Represents options for generating a mask based on luminance values, using a specified threshold multiplier.
     /// </summary>
-    /// <param name="thresholdMultiplier">The multiplier applied to the luminance threshold to determine which pixels are included in the mask. Must be a
+    /// <param name="ThresholdMultiplier">The multiplier applied to the luminance threshold to determine which pixels are included in the mask. Must be a
     /// non-negative value.</param>
-    public record LuminanceMaskOptions(float thresholdMultiplier) : MaskOptions; 
+    public record LuminanceMaskOptions(float ThresholdMultiplier) : MaskOptions; 
 
     /// <summary>
     /// Provides a mask based on the luminance values of an image, generating binary masks by thresholding pixel
     /// intensities.
     /// </summary>
     /// <remarks>The luminance threshold is dynamically calculated based on the minimum and maximum pixel
-    /// values in the image and is influenced by the <see cref="LuminanceMaskOptions.thresholdMultiplier"/>. 
+    /// values in the image and is influenced by the <see cref="LuminanceMaskOptions.ThresholdMultiplier"/>. 
     /// Thread safety is not guaranteed; concurrent use of the same instance is not supported.</remarks>
     public class LuminanceMask : Mask<LuminanceMaskOptions>
     {
@@ -86,7 +86,7 @@ namespace PixelsorterClassLib.Masks
         public override (NDArray mask, NDArray invertedMask) GetMask(string imagePath, LuminanceMaskOptions options)
         {
             using var image = LoadImage(imagePath);
-            this.thresholdMultiplier = options.thresholdMultiplier;
+            this.thresholdMultiplier = options.ThresholdMultiplier;
             return CreateLuminanceMask(image);
         }
 
@@ -96,7 +96,7 @@ namespace PixelsorterClassLib.Masks
             {
                 using var image = LoadImage(imagePath);
                 cancellationToken.ThrowIfCancellationRequested();
-                this.thresholdMultiplier = options.thresholdMultiplier;
+                this.thresholdMultiplier = options.ThresholdMultiplier;
                 return CreateLuminanceMask(image);
             }, cancellationToken);
         }

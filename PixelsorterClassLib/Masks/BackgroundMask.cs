@@ -12,8 +12,8 @@ namespace PixelsorterClassLib.Masks
     /// <summary>
     /// Represents options for configuring a background mask with a specified fade width.
     /// </summary>
-    /// <param name="fadeWidth">The width, in pixels, over which the background mask fades. Must be a non-negative integer.</param>
-    public record BackgroundMaskOptions(int fadeWidth) : MaskOptions;
+    /// <param name="FadeWidth">The width, in pixels, over which the background mask fades. Must be a non-negative integer.</param>
+    public record BackgroundMaskOptions(int FadeWidth) : MaskOptions;
 
     /// <summary>
     /// Provides functionality to generate a mask from an input image using a pre-trained model.
@@ -385,7 +385,7 @@ namespace PixelsorterClassLib.Masks
         {
             using var inputImage = LoadImage(inputImagePath);
             LoadModel();
-            (var mask, var invertedMask) = CreateMask(inputImage, options.fadeWidth);
+            (var mask, var invertedMask) = CreateMask(inputImage, options.FadeWidth);
             return (ConvertMaskToNdArray(mask), ConvertMaskToNdArray(invertedMask));
         }
 
@@ -405,7 +405,7 @@ namespace PixelsorterClassLib.Masks
                 cancellationToken.ThrowIfCancellationRequested();
                 LoadModel();
                 cancellationToken.ThrowIfCancellationRequested();
-                (var mask, var invertedMask) = CreateMask(inputImage, options.fadeWidth);
+                (var mask, var invertedMask) = CreateMask(inputImage, options.FadeWidth);
                 return (ConvertMaskToNdArray(mask), ConvertMaskToNdArray(invertedMask));
             }, cancellationToken);
         }

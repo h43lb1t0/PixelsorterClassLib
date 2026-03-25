@@ -10,9 +10,9 @@ namespace PixelsorterClassLib.Masks
     /// <summary>
     /// Specifies options for generating a mask using the Canny edge detection algorithm.
     /// </summary>
-    /// <param name="threshold">The threshold value used to determine edge sensitivity. Higher values result in fewer detected edges. Must be
+    /// <param name="Threshold">The threshold value used to determine edge sensitivity. Higher values result in fewer detected edges. Must be
     /// non-negative.</param>
-    public record CannyMaskOptions(float threshold) : MaskOptions;
+    public record CannyMaskOptions(float Threshold) : MaskOptions;
     
     public class CannyMask : Mask<CannyMaskOptions>
     {
@@ -20,7 +20,7 @@ namespace PixelsorterClassLib.Masks
         /// <summary>
         /// The threshold value for the binary thresholding step in the Canny edge detection process. 
         /// This value determines the sensitivity of edge detection, with lower values resulting in more edges being detected 
-        /// and higher values resulting in fewer edges. The threshold is set via <see cref="CannyMaskOptions.threshold"/> 
+        /// and higher values resulting in fewer edges. The threshold is set via <see cref="CannyMaskOptions.Threshold"/> 
         /// and should be in the range (0, 1].
         /// </summary>
         private float threshold = 0.3f;
@@ -81,7 +81,7 @@ namespace PixelsorterClassLib.Masks
         /// the inverted mask. Both arrays will have the same dimensions as the input image.</returns>
         public override (NDArray mask, NDArray invertedMask) GetMask(string imagePath, CannyMaskOptions options)
         {
-            SetThreshold(options.threshold);
+            SetThreshold(options.Threshold);
             using var image = LoadImage(imagePath);
             (var mask, var invertedMask) = CreateCannyMask(image);
             return (ConvertMaskToNdArray(mask), ConvertMaskToNdArray(invertedMask));
@@ -101,7 +101,7 @@ namespace PixelsorterClassLib.Masks
         {
             return Task.Run(() =>
             {
-                SetThreshold(options.threshold);
+                SetThreshold(options.Threshold);
                 cancellationToken.ThrowIfCancellationRequested();
                 using var image = LoadImage(imagePath);
                 cancellationToken.ThrowIfCancellationRequested();
