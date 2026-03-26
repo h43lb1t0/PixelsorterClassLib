@@ -41,6 +41,12 @@ namespace PixelsorterClassLib.Masks
         }
     }
 
+    /// <summary>
+    /// Provides functionality for generating chunk-based binary masks and their inverses based on configurable chunk
+    /// size, thickness, and orientation options.
+    /// </summary>
+    /// <remarks>The chunk mask is constructed by segmenting an image into regions (chunks) according to the
+    /// specified options, supporting both row-wise and column-wise orientations.</remarks>
     public class ChunkMask : Mask<ChunkMaskOptions>
     {
 
