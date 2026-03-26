@@ -44,27 +44,16 @@ namespace PixelsorterClassLib.Masks
         /// <param name="image">The source image to process. Must be a non-null image in the Rgba32 pixel format.</param>
         /// <returns>A tuple containing the binary mask and the inverted mask as images in the L8 pixel format. The first item is
         /// the mask, and the second item is the inverted mask.</returns>
-        private (Image<L8> mask, Image<L8> invertedMask) CreateCannyMask(Image<Rgba32> image)
+        private (Image<L8> mask, Image<L8> invertedMask) CreateCannyMask(Image<L8> image)
         {
-            var invertedMask = image.CloneAs<L8>();
-            invertedMask.Mutate(x => x.GaussianBlur(1f)
+            image.Mutate(x => x.GaussianBlur(1f)
                              .DetectEdges()
                              .BinaryThreshold(threshold));
 
-            var mask = invertedMask.Clone(x => x.Invert());
-            return (mask, invertedMask);
+            var mask = image.Clone(x => x.Invert());
+            return (mask, image);
         }
 
-        /// <summary>
-        /// Loads an image from the specified file path using the RGBA32 pixel format.
-        /// </summary>
-        /// <param name="inputImagePath">The path to the image file to load. Must refer to a valid image file; cannot be null or empty.</param>
-        /// <returns>An instance of Image<Rgba32> representing the loaded image.</returns>
-        /// <exception cref="InvalidOperationException">Thrown if the image cannot be loaded from the specified path.</exception>
-        private Image<Rgba32> LoadImage(string inputImagePath)
-        {
-            return Image.Load<Rgba32>(inputImagePath) ?? throw new InvalidOperationException("Failed to load the input image.");
-        }
 
         /// <summary>
         /// Generates a mask and an inverted mask from the specified image using edge detection.
@@ -77,7 +66,7 @@ namespace PixelsorterClassLib.Masks
         public override (NDArray mask, NDArray invertedMask) GetMask(string imagePath, CannyMaskOptions options)
         {
             this.threshold = options.Threshold;
-            using var image = LoadImage(imagePath);
+            using var image = LoadL8Image(imagePath);
             (var mask, var invertedMask) = CreateCannyMask(image);
             return (ConvertMaskToNdArray(mask), ConvertMaskToNdArray(invertedMask));
         }
@@ -98,7 +87,7 @@ namespace PixelsorterClassLib.Masks
             {
                 this.threshold = options.Threshold;
                 cancellationToken.ThrowIfCancellationRequested();
-                using var image = LoadImage(imagePath);
+                using var image = LoadL8Image(imagePath);
                 cancellationToken.ThrowIfCancellationRequested();
                 (var mask, var invertedMask) = CreateCannyMask(image);
                 return (ConvertMaskToNdArray(mask), ConvertMaskToNdArray(invertedMask));

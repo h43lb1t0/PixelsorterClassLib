@@ -42,6 +42,11 @@ namespace PixelsorterClassLib.Masks
             return Task.FromResult(true);
         }
 
+        internal Image<L8> LoadL8Image(string inputImagePath)
+        {
+            return Image.Load<L8>(inputImagePath) ?? throw new InvalidOperationException("Failed to load the input image.");
+        }
+
         public abstract (NDArray mask, NDArray invertedMask) GetMask(String imagePath, TOptions options);
 
         public abstract Task<(NDArray mask, NDArray invertedMask)> GetMaskAsync(String imagePath, TOptions options, CancellationToken cancellationToken = default);
