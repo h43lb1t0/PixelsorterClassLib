@@ -29,10 +29,10 @@ internal class Program
         var masker = new ChunkMask();
 
 
-        (var j, var k) = masker.GetMask(inputImagePath, new ChunkMaskOptions(1500, 3500, SortDirections.RowLeftToRight));
+        (var j, var k) = masker.GetMask(inputImagePath, new ChunkMaskOptions(1500, 3500, SortDirections.ColumnBottomToTop));
 
-        var foo = Sorter.SortImage(img, SortBy.Warmth(), SortDirections.RowLeftToRight, j);
-        var voo = Sorter.SortImage(img, SortBy.Warmth(), SortDirections.RowLeftToRight, k);
+        var foo = Sorter.SortImage(img, SortBy.Warmth(), SortDirections.ColumnBottomToTop, j);
+        var voo = Sorter.SortImage(img, SortBy.Warmth(), SortDirections.ColumnBottomToTop, k);
 
 
 
