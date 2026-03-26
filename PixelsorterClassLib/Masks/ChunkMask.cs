@@ -10,6 +10,13 @@ using System.Text;
 
 namespace PixelsorterClassLib.Masks
 {
+    /// <summary>
+    /// Represents configuration options for a chunk-based mask, including chunk size limits, sorting direction, and
+    /// mask thickness.
+    /// </summary>
+    /// <remarks>Use this type to specify how chunks are generated and ordered when applying a chunk mask. The
+    /// chunk size and thickness parameters control the granularity and appearance of the mask, while the sort direction
+    /// determines the order in which chunks are processed.</remarks>
     public record ChunkMaskOptions : MaskOptions
     {
         public int MinChunkSize { get; init; }
@@ -44,6 +51,15 @@ namespace PixelsorterClassLib.Masks
         private int width;
         private int height;
 
+        /// <summary>
+        /// Sets the image dimensions and validates the provided chunk mask options for compatibility with the image
+        /// size and sort direction.
+        /// </summary>
+        /// <param name="image">The image whose dimensions are used to determine valid chunk mask options. The image is disposed after use.</param>
+        /// <param name="options">The chunk mask options to validate against the image dimensions and sort direction. Specifies chunk sizes,
+        /// thickness, and sort direction.</param>
+        /// <exception cref="ArgumentException">Thrown if the maximum chunk size specified in <paramref name="options"/> exceeds the corresponding image
+        /// dimension for the selected sort direction.</exception>
         private void SetDimAndCheckOptionsValidity(Image<L8> image, ChunkMaskOptions options)
         {
             width = image.Width;
