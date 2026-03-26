@@ -122,22 +122,40 @@ namespace PixelsorterClassLib.Masks
                     int earliestStart = Math.Max(0, previousStart - length + 1);
                     int latestStart = Math.Min(previousEnd, limitSecondary - length);
 
-                    if (earliestStart > latestStart) earliestStart = latestStart;
+                    if (earliestStart > latestStart) latestStart = earliestStart;
 
                     currentStart = rnd.Next(earliestStart, latestStart + 1);
                 }
 
                 currentEnd = currentStart + length - 1;
 
-                for (int s = 0; s < limitSecondary; s++)
+                if (!isColumnWise)
                 {
-                    for (int pMod = 0; pMod < thickness && p + pMod < limitPrimary; pMod++)
+                    chunkMask.ProcessPixelRows(accessor =>
                     {
-                        int x = isColumnWise ? p + pMod : s;
-                        int y = isColumnWise ? s : p + pMod;
-
-                        chunkMask[x, y] = new L8((s >= currentStart && s <= currentEnd) ? (byte)255 : (byte)0);
-                    }
+                        for (int pMod = 0; pMod < thickness && p + pMod < limitPrimary; pMod++)
+                        {
+                            var span = accessor.GetRowSpan(p + pMod);
+                            span[..currentStart].Fill(new L8(0));
+                            span[currentStart..(currentEnd + 1)].Fill(new L8(255));
+                            span[(currentEnd + 1)..].Fill(new L8(0));
+                        }
+                    });
+                }
+                else
+                {
+                    chunkMask.ProcessPixelRows(accessor =>
+                    {
+                        for (int s = 0; s < limitSecondary; s++)
+                        {
+                            byte value = (s >= currentStart && s <= currentEnd) ? (byte)255 : (byte)0;
+                            var span = accessor.GetRowSpan(s);
+                            for (int pMod = 0; pMod < thickness && p + pMod < limitPrimary; pMod++)
+                            {
+                                span[p + pMod] = new L8(value);
+                            }
+                        }
+                    });
                 }
 
                 previousStart = currentStart;
