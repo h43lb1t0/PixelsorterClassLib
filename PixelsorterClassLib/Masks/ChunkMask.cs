@@ -43,9 +43,8 @@ namespace PixelsorterClassLib.Masks
 
         private int minChunksize;
         private int maxChunksize;
-        private bool sortDirectionIsRow;
+        private bool isColumnWise;
 
-        private int maxLenght;
         private int thickness;
 
         private int width;
@@ -71,14 +70,12 @@ namespace PixelsorterClassLib.Masks
                 case SortDirections.ColumnBottomToTop:
                 case SortDirections.ColumnTopToBottom:
                     if (options.MaxChunkSize > height) throw new ArgumentException("Max chunk size can't be greater then image height");
-                    this.sortDirectionIsRow = false;
-                    this.maxLenght = height;
+                    this.isColumnWise = true;
                     break;
                 case SortDirections.RowLeftToRight:
                 case SortDirections.RowRightToLeft:
                     if (options.MaxChunkSize > width) throw new ArgumentException("Max chunk size can't be greater then image width");
-                    this.sortDirectionIsRow = true;
-                    this.maxLenght = width;
+                    this.isColumnWise = false;
                     break;
             }
             this.minChunksize = options.MinChunkSize;
@@ -87,33 +84,43 @@ namespace PixelsorterClassLib.Masks
 
         }
 
+        /// <summary>
+        /// Generates a pair of chunk masks as NDArray objects, representing segmented regions and their inverses based
+        /// on the current configuration.
+        /// </summary>
+        /// <remarks>The chunk masks are created according to the configured orientation, chunk size
+        /// range, and thickness. The method uses randomization to determine chunk positions, resulting in different
+        /// masks on each invocation.</remarks>
+        /// <returns>A tuple containing two NDArray objects: the first is the generated chunk mask, and the second is its
+        /// inverted mask.</returns>
         private (NDArray mask, NDArray invertedMask) CreateChunks()
         {
-
             var chunkMask = new Image<L8>(width, height);
-
             Random rnd = new Random();
 
             int previousStart = 0;
             int previousEnd = 0;
             int length;
 
-            for (int y = 0; y < this.height; y += thickness)
+            int limitPrimary = isColumnWise ? this.width : this.height;
+            int limitSecondary = isColumnWise ? this.height : this.width;
+
+
+            for (int p = 0; p < limitPrimary; p += thickness)
             {
                 length = rnd.Next(minChunksize, maxChunksize + 1);
 
                 int currentStart;
                 int currentEnd;
 
-                if (y == 0)
+                if (p == 0)
                 {
-                    currentStart = rnd.Next(0, this.width - length + 1);
+                    currentStart = rnd.Next(0, limitSecondary - length + 1);
                 }
                 else
                 {
                     int earliestStart = Math.Max(0, previousStart - length + 1);
-
-                    int latestStart = Math.Min(previousEnd, this.width - length);
+                    int latestStart = Math.Min(previousEnd, limitSecondary - length);
 
                     if (earliestStart > latestStart) earliestStart = latestStart;
 
@@ -122,11 +129,14 @@ namespace PixelsorterClassLib.Masks
 
                 currentEnd = currentStart + length - 1;
 
-                for (int x = 0; x < this.width; x++)
+                for (int s = 0; s < limitSecondary; s++)
                 {
-                    for (int yMod = 0; yMod < thickness && y + yMod < this.height; yMod++)
+                    for (int pMod = 0; pMod < thickness && p + pMod < limitPrimary; pMod++)
                     {
-                        chunkMask[x, y + yMod] = new L8((x >= currentStart && x <= currentEnd) ? (byte)255 : (byte)0);
+                        int x = isColumnWise ? p + pMod : s;
+                        int y = isColumnWise ? s : p + pMod;
+
+                        chunkMask[x, y] = new L8((s >= currentStart && s <= currentEnd) ? (byte)255 : (byte)0);
                     }
                 }
 
