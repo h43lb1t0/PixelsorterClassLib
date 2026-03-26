@@ -12,7 +12,7 @@ namespace PixelsorterClassLib.Masks
 {
     /// <summary>
     /// Represents configuration options for a chunk-based mask, including chunk size limits, sorting direction, and
-    /// mask thickness.
+    /// mask thickness limits.
     /// </summary>
     /// <remarks>Use this type to specify how chunks are generated and ordered when applying a chunk mask. The
     /// chunk size and thickness parameters control the granularity and appearance of the mask, while the sort direction
@@ -22,18 +22,21 @@ namespace PixelsorterClassLib.Masks
         public int MinChunkSize { get; init; }
         public int MaxChunkSize { get; init; }
 
-        public int Thickness { get; init; }
+        public int MinThickness { get; init; }
+        public int MaxThickness { get; init; }
+
         public SortDirections SortDirection { get; init; }
 
-        public ChunkMaskOptions(int minChunkSize, int maxChunkSize, SortDirections sortDirection, int thickness = 10)
+        public ChunkMaskOptions(int minChunkSize, int maxChunkSize, SortDirections sortDirection, int minThickness = 5, int maxThickness = 50)
         {
             if (minChunkSize <= 1) throw new ArgumentException("Chunk size must be greater then 1");
             if (maxChunkSize <= minChunkSize) throw new ArgumentException("Max chunk size must be greater then min chunk size");
             if (sortDirection is SortDirections.IntoMask) throw new ArgumentException("Into mask sort direction is not suported by this mask type");
-            if (thickness <= 0 || thickness > 50) throw new ArgumentException("Thickness must be in range (0,50]");
+            if (minThickness <= 0 || minThickness > maxThickness) throw new ArgumentException("Min thickness must be greater 0 and min must be greater max");
             MinChunkSize = minChunkSize;
             MaxChunkSize = maxChunkSize;
-            Thickness = thickness;
+            MinThickness = minThickness;
+            MaxThickness = maxThickness;
             SortDirection = sortDirection;
         }
     }
@@ -45,7 +48,8 @@ namespace PixelsorterClassLib.Masks
         private int maxChunksize;
         private bool isColumnWise;
 
-        private int thickness;
+        private int minThickness;
+        private int maxThickness;
 
         private int width;
         private int height;
@@ -70,17 +74,20 @@ namespace PixelsorterClassLib.Masks
                 case SortDirections.ColumnBottomToTop:
                 case SortDirections.ColumnTopToBottom:
                     if (options.MaxChunkSize > height) throw new ArgumentException("Max chunk size can't be greater then image height");
+                    if (options.MaxThickness >= width) throw new ArgumentException("Max thickness must be less then image width");
                     this.isColumnWise = true;
                     break;
                 case SortDirections.RowLeftToRight:
                 case SortDirections.RowRightToLeft:
                     if (options.MaxChunkSize > width) throw new ArgumentException("Max chunk size can't be greater then image width");
+                    if (options.MaxThickness >= height) throw new ArgumentException("Max thickness must be less then image height");
                     this.isColumnWise = false;
                     break;
             }
             this.minChunksize = options.MinChunkSize;
             this.maxChunksize = options.MaxChunkSize;
-            this.thickness = options.Thickness;
+            this.minThickness = options.MinThickness;
+            this.maxThickness = options.MaxThickness;
 
         }
 
@@ -104,6 +111,8 @@ namespace PixelsorterClassLib.Masks
 
             int limitPrimary = isColumnWise ? this.width : this.height;
             int limitSecondary = isColumnWise ? this.height : this.width;
+
+            int thickness = rnd.Next(minThickness, maxThickness + 1);
 
 
             for (int p = 0; p < limitPrimary; p += thickness)
@@ -160,6 +169,8 @@ namespace PixelsorterClassLib.Masks
 
                 previousStart = currentStart;
                 previousEnd = currentEnd;
+                thickness = rnd.Next(minThickness, maxThickness + 1);
+
             }
 
             var inverted = chunkMask.Clone(x => x.Invert());
