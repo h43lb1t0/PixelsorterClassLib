@@ -10,20 +10,20 @@ namespace Pixelsorter.Tests.ImageTests
         public static readonly String[] FileExtensions = [".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp"];
         public static readonly int[] ChannelCounts = [1, 3, 4];
 
-        public static string CreateTestImage(String ext, int chanels)
+        public static string CreateTestImage(String ext, int chanels, int width = 24, int height = 24)
         {
             String path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"test_image_{Guid.NewGuid()}{ext}");
             switch (chanels)
             {
                 case 1:
-                    using (var image = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.L8>(24, 24)) image.Save(path);
+                    using (var image = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.L8>(width, height)) image.Save(path);
                     break;
                 case 3:
-                    using (var image = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgb24>(24, 24)) image.Save(path);
+                    using (var image = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgb24>(width, height)) image.Save(path);
                     break;
                 case 4:
                 default:
-                    using (var image = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32>(24, 24)) image.Save(path);
+                    using (var image = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32>(width, height)) image.Save(path);
                     break;
             }
             return path;
