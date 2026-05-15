@@ -3,6 +3,9 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.ColorSpaces;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.ColorSpaces.Conversion;
+using SixLabors.ImageSharp.Processing.Processors.Transforms;
+using System.Runtime.CompilerServices;
+using SixLabors.ImageSharp.Processing;
 
 namespace PixelsorterClassLib.Core;
 
@@ -15,17 +18,39 @@ namespace PixelsorterClassLib.Core;
 public class Image
 {
 
+    const int MaxLongSide = 1920;
+    const int MaxShortSide = 1080;
+
+
     /// <summary>
     /// Loads an image from the specified file path and returns it as a 3D NumSharp array (height x width x channels) in HSL color space. 
     /// The method should handle various image formats and convert them to a consistent format (e.g., RGBA) for processing.
     /// </summary>
-    /// <param name="path"></param>
-    /// <returns></returns>
-    public static NDArray LoadImage(string path)
+    /// <param name="path">The file path of the image to load.</param>
+    /// <param name="resampler">Optional resampler used to resize the image during loading if it is larger then 1080p.</param>
+    /// <returns>A 3D NumSharp array representing the image in HSL color space and a tuple containing the image's width and height.</returns>
+    public static (NDArray, (int width, int height)) LoadImage(string path, IResampler? resampler = null)
     {
         using var image = SixLabors.ImageSharp.Image.Load<Rgb24>(path);
+        image.Mutate(x => x.AutoOrient());
         int height = image.Height;
         int width = image.Width;
+
+        if (resampler != null && (Math.Max(width, height) > MaxLongSide || Math.Min(width, height) > MaxShortSide))
+        {
+            bool isLandscape = width >= height;
+            Size targetSize = isLandscape
+                ? new Size(MaxLongSide, MaxShortSide)
+                : new Size(MaxShortSide, MaxLongSide);
+
+            image.Mutate(x => x.Resize(new ResizeOptions
+            {
+                Mode = ResizeMode.Max,
+                Size = targetSize,
+                Sampler = resampler,
+                Compand = true
+            }));
+        }
 
         // Allocate flat byte array for direct access
         float[] data = new float[height * width * 3];
@@ -52,7 +77,7 @@ public class Image
         });
 
         // Create NDArray from byte array and reshape to 3D
-        return np.array(data).reshape(new Shape(height, width, 3));
+        return (np.array(data).reshape(new Shape(height, width, 3)), (width, height));
     }
 
 
