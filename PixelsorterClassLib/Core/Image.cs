@@ -35,6 +35,7 @@ public class Image
         image.Mutate(x => x.AutoOrient());
         int height = image.Height;
         int width = image.Width;
+        (int, int) originalSize = (width, height);
 
         if (resampler != null && (Math.Max(width, height) > MaxLongSide || Math.Min(width, height) > MaxShortSide))
         {
@@ -50,6 +51,9 @@ public class Image
                 Sampler = resampler,
                 Compand = true
             }));
+            
+            width = image.Width;
+            height = image.Height;
         }
 
         // Allocate flat byte array for direct access
@@ -77,7 +81,7 @@ public class Image
         });
 
         // Create NDArray from byte array and reshape to 3D
-        return (np.array(data).reshape(new Shape(height, width, 3)), (width, height));
+        return (np.array(data).reshape(new Shape(height, width, 3)), originalSize);
     }
 
 
@@ -171,7 +175,7 @@ public class Image
                     Sampler = resampler,
                     Compand = true
                 }));
-            } else if (resampler == null ^ size.HasValue)
+            } else if (resampler != null ^ size.HasValue)
             {
                 throw new ArgumentException("Both resampler and size must be provided together or both must be null.");
             }
