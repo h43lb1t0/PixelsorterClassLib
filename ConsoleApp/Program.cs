@@ -19,26 +19,31 @@ internal class Program
 {
     private static void Main(string[] args)
     {
-
         String inputImagePath = "D:\\Documents\\codeing\\PixelsorterProject\\PixelsorterClassLib\\ConsoleApp\\examples\\alone-4480442.jpg";
         String outputDirectory = "D:\\Documents\\codeing\\PixelsorterProject\\PixelsorterClassLib\\ConsoleApp\\examples\\";
 
-        var img = PixelsorterClassLib.Core.Image.LoadImage(inputImagePath);
+        var sortBy = SortBy.Saturation();
+        var direction = SortDirections.RowRightToLeft;
 
+        var warmup = PixelsorterClassLib.Core.Image.LoadImage(inputImagePath, KnownResamplers.NearestNeighbor);
+        PixelsorterClassLib.Core.Sorter.SortImage(warmup.Item1, sortBy, direction);
 
-        var masker = new ChunkMask();
+        var downscaleWatch = System.Diagnostics.Stopwatch.StartNew();
+        var (downscaledImage, downscaledSize) = PixelsorterClassLib.Core.Image.LoadImage(inputImagePath, KnownResamplers.NearestNeighbor);
+        var downscaledSorted = PixelsorterClassLib.Core.Sorter.SortImage(downscaledImage, sortBy, direction);
+        PixelsorterClassLib.Core.Image.SaveImage(downscaledSorted, $"{outputDirectory}downscaled_upscaled_sorted.png", KnownResamplers.NearestNeighbor, downscaledSize);
 
+        downscaleWatch.Stop();
 
-        (var j, var k) = masker.GetMask(inputImagePath, new ChunkMaskOptions(1500, 3500, SortDirections.ColumnBottomToTop));
+        PixelsorterClassLib.Core.Image.SaveImage(downscaledSorted, $"{outputDirectory}downscaled_sorted.png");
 
-        var foo = Sorter.SortImage(img, SortBy.Warmth(), SortDirections.ColumnBottomToTop, j);
-        var voo = Sorter.SortImage(img, SortBy.Warmth(), SortDirections.ColumnBottomToTop, k);
+        var fullResWatch = System.Diagnostics.Stopwatch.StartNew();
+        var (fullResImage, fullResSize) = PixelsorterClassLib.Core.Image.LoadImage(inputImagePath);
+        var fullResSorted = PixelsorterClassLib.Core.Sorter.SortImage(fullResImage, sortBy, direction);
+        PixelsorterClassLib.Core.Image.SaveImage(fullResSorted, $"{outputDirectory}full_res_sorted.png");
+        fullResWatch.Stop();
 
-
-
-        PixelsorterClassLib.Core.Image.SaveImage(foo, $"{outputDirectory}_j.jpg");
-        PixelsorterClassLib.Core.Image.SaveImage(voo, $"{outputDirectory}_k.jpg");
-
-
+        Console.WriteLine($"Full resolution sort: {fullResWatch.ElapsedMilliseconds} ms (loaded {fullResSize.width}x{fullResSize.height})");
+        Console.WriteLine($"Downscaled and upscaled after sorting sort: {downscaleWatch.ElapsedMilliseconds} ms");
     }
 }
