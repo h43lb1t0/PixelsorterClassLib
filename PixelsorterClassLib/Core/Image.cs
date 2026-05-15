@@ -28,7 +28,7 @@ public class Image
     /// </summary>
     /// <param name="path">The file path of the image to load.</param>
     /// <param name="resampler">Optional resampler used to resize the image during loading if it is larger then 1080p.</param>
-    /// <returns>A 3D NumSharp array representing the image in HSL color space and a tuple containing the image's width and height.</returns>
+    /// <returns>A 3D NumSharp array representing the image in HSL color space and a tuple containing the image's original width and height.</returns>
     public static (NDArray, (int width, int height)) LoadImage(string path, IResampler? resampler = null)
     {
         using var image = SixLabors.ImageSharp.Image.Load<Rgb24>(path);
