@@ -22,7 +22,10 @@ string inputPath = "input.jpg";
 string outputPath = "output.jpg";
 
 // 1. Load the image into an NDArray
-NDArray imageData = Image.LoadImage(inputPath);
+NDArray (imageData, _) = Image.LoadImage(inputPath);
+
+// Or load image donwnscaled for faster processing
+// (imageData, originalSize) = Image.LoadImage(inputImagePath, KnownResamplers.NearestNeighbor);
 
 // 2. Get mask options
 
@@ -40,6 +43,9 @@ NDArray sortedData = Sorter.SortImage(imageData, SortBy.Warmth(), SortDirections
 
 // 5. Save the sorted image to disk
 Image.SaveImage(sortedData, outputPath);
+
+// Upscale again to original size if the image was loaded downscaled
+// Image.SaveImage(sortedData, outputPath, KnownResamplers.NearestNeighbor, originalSize);
 ```
 
 ## Available Sorting Criteria
