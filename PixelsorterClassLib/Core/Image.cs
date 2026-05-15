@@ -146,9 +146,11 @@ public class Image
     /// Saves a 3D NumSharp array (height x width x channels) as an image file at the specified path. 
     /// The method should handle the conversion from the NumSharp array format back to an image format and support various output formats based on the file extension provided in the path.
     /// </summary>
-    /// <param name="data"></param>
-    /// <param name="path"></param>
-    public static void SaveImage(NDArray data, string path)
+    /// <param name="data">The NumSharp array containing image data.</param>
+    /// <param name="path">The file path where the image will be saved.</param>
+    /// <param name="resampler">The resampler to use for resizing the image.</param>
+    /// <param name="size">The target size for resizing the image.</param>
+    public static void SaveImage(NDArray data, string path, IResampler? resampler, (int width, int height)? size)
     {
 
 
@@ -159,6 +161,20 @@ public class Image
         }
 
         using var image = NdarrayToImgData(data);
+
+            if (resampler != null && size.HasValue)
+            {
+                image.Mutate(x => x.Resize(new ResizeOptions
+                {
+                    Mode = ResizeMode.Max,
+                    Size = new Size(size.Value.width, size.Value.height),
+                    Sampler = resampler,
+                    Compand = true
+                }));
+            } else if (resampler == null ^ size.HasValue)
+            {
+                throw new ArgumentException("Both resampler and size must be provided together or both must be null.");
+            }
 
         using var outputStream = File.Open(path, FileMode.Create, FileAccess.Write, FileShare.None);
         image.SaveAsPng(outputStream);
