@@ -150,7 +150,7 @@ public class Image
     /// <param name="path">The file path where the image will be saved.</param>
     /// <param name="resampler">The resampler to use for resizing the image.</param>
     /// <param name="size">The target size for resizing the image.</param>
-    public static void SaveImage(NDArray data, string path, IResampler? resampler, (int width, int height)? size)
+    public static void SaveImage(NDArray data, string path, IResampler? resampler = null, (int width, int height)? size = null)
     {
 
 
