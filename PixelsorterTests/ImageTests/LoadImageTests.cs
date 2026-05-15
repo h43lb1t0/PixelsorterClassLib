@@ -11,7 +11,7 @@ namespace Pixelsorter.Tests.ImageTests
             string path = ImageTestHelpers.CreateTestImage(extension, channels);
             try
             {
-                var image = Image.LoadImage(path);
+                var (image, _) = Image.LoadImage(path);
 
                 Assert.NotNull(image);
             }
@@ -64,7 +64,7 @@ namespace Pixelsorter.Tests.ImageTests
             string path = ImageTestHelpers.CreateTestImageWithAlpha(extension);
             try
             {
-                var image = Image.LoadImage(path);
+                var (image, _) = Image.LoadImage(path);
                 Assert.NotNull(image);
             }
             finally
@@ -80,7 +80,7 @@ namespace Pixelsorter.Tests.ImageTests
             string path = ImageTestHelpers.CreateGrayscaleTestImage(extension);
             try
             {
-                var image = Image.LoadImage(path);
+                var (image, _) = Image.LoadImage(path);
                 Assert.NotNull(image);
             }
             finally

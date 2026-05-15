@@ -17,7 +17,7 @@ namespace Pixelsorter.Tests.ImageTests
             string outPath = Path.Combine(Path.GetTempPath(), $"test_save_image_{Guid.NewGuid()}{extension}");
             try
             {
-                var image = Image.LoadImage(inPath);
+                var (image, _) = Image.LoadImage(inPath);
                 Image.SaveImage(image, outPath);
 
                 Assert.True(File.Exists(outPath));
@@ -61,7 +61,7 @@ namespace Pixelsorter.Tests.ImageTests
             string outPath = Path.Combine(Path.GetTempPath(), $"test_save_image_alpha_{Guid.NewGuid()}{extension}");
             try
             {
-                var image = Image.LoadImage(inPath);
+                var (image, _) = Image.LoadImage(inPath);
                 Image.SaveImage(image, outPath);
 
                 Assert.True(File.Exists(outPath));
@@ -82,7 +82,7 @@ namespace Pixelsorter.Tests.ImageTests
             string outPath = Path.Combine(Path.GetTempPath(), $"test_save_image_grayscale_{Guid.NewGuid()}{extension}");
             try
             {
-                var image = Image.LoadImage(inPath);
+                var (image, _) = Image.LoadImage(inPath);
                 Image.SaveImage(image, outPath);
 
                 Assert.True(File.Exists(outPath));
