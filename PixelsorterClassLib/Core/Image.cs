@@ -3,6 +3,7 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.ColorSpaces;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.ColorSpaces.Conversion;
+using SixLabors.ImageSharp.Processing;
 
 namespace PixelsorterClassLib.Core;
 
@@ -24,6 +25,7 @@ public class Image
     public static NDArray LoadImage(string path)
     {
         using var image = SixLabors.ImageSharp.Image.Load<Rgb24>(path);
+        image.Mutate(x => x.AutoOrient());
         int height = image.Height;
         int width = image.Width;
 
