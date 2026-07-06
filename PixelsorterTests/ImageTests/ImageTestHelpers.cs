@@ -42,6 +42,17 @@ namespace Pixelsorter.Tests.ImageTests
             return imagePath;
         }
 
+        /// <summary>
+        /// Gets the raw stored dimensions of the test image without applying AutoOrient.
+        /// This is used to verify that AutoOrient actually rotates the image.
+        /// </summary>
+        public static (int rawWidth, int rawHeight) GetRawTestImageDimensions()
+        {
+            string testImagePath = GetTestImageWithExifRotation();
+            using var image = SixLabors.ImageSharp.Image.Load(testImagePath);
+            return (image.Width, image.Height);
+        }
+
         public static string CreateTestImage(String ext, int chanels)
         {
             String path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"test_image_{Guid.NewGuid()}{ext}");

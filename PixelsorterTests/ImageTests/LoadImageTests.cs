@@ -93,8 +93,13 @@ namespace Pixelsorter.Tests.ImageTests
         public void LoadImage_WithExifRotation_ShouldAutoOrient()
         {
             // Use the real test image that has EXIF orientation value 6 (90 degrees CCW)
+            // Raw stored dimensions: 800x1000 -> After AutoOrient: 1000x800
             string testImagePath = ImageTestHelpers.GetTestImageWithExifRotation();
 
+            // Get the raw stored dimensions WITHOUT AutoOrient
+            var (rawWidth, rawHeight) = ImageTestHelpers.GetRawTestImageDimensions();
+
+            // Load the image WITH AutoOrient (which Image.LoadImage applies)
             var image = Image.LoadImage(testImagePath);
 
             // Verify image is loaded successfully
@@ -104,23 +109,34 @@ namespace Pixelsorter.Tests.ImageTests
             var shape = image.shape;
             Assert.Equal(3, shape.Length); // Should be 3D array
 
-            int height = (int)shape[0];
-            int width = (int)shape[1];
+            int orientedHeight = (int)shape[0];
+            int orientedWidth = (int)shape[1];
             int channels = (int)shape[2];
 
             // Verify channels are 3 (RGB converted to HSL)
             Assert.Equal(3, channels);
 
             // Verify dimensions are valid and non-zero
-            Assert.True(height > 0, "Image height should be positive");
-            Assert.True(width > 0, "Image width should be positive");
+            Assert.True(orientedHeight > 0, "Image height should be positive");
+            Assert.True(orientedWidth > 0, "Image width should be positive");
 
-            // Verify that AutoOrient was applied - since the original image has orientation 6 (90 CCW),
-            // it should have been rotated to the correct orientation
-            // The exact dimensions depend on the original image, but we verify the data is valid
+            // CRITICAL ASSERTION: Verify that AutoOrient actually rotated the image
+            // For EXIF orientation 6 (90 degrees CCW), the raw dimensions should be swapped
+            // Raw image: (rawWidth, rawHeight) -> After 90° rotation: (rawHeight, rawWidth)
+            Assert.Equal(rawHeight, orientedWidth);
+            Assert.True(rawHeight == orientedWidth, 
+                $"After 90° CCW rotation (EXIF 6), oriented width should equal raw height. " +
+                $"Raw: {rawWidth}x{rawHeight}, Oriented: {orientedWidth}x{orientedHeight}");
+
+            Assert.Equal(rawWidth, orientedHeight);
+            Assert.True(rawWidth == orientedHeight,
+                $"After 90° CCW rotation (EXIF 6), oriented height should equal raw width. " +
+                $"Raw: {rawWidth}x{rawHeight}, Oriented: {orientedWidth}x{orientedHeight}");
+
+            // Verify pixel data is consistent with dimensions
             var pixelData = image.ToArray<float>();
-            Assert.True(pixelData.Length == height * width * channels, 
-                $"Pixel data length should match height*width*channels: {pixelData.Length} vs {height * width * channels}");
+            Assert.True(pixelData.Length == orientedHeight * orientedWidth * channels, 
+                $"Pixel data length should match height*width*channels: {pixelData.Length} vs {orientedHeight * orientedWidth * channels}");
 
             // Verify the HSL values are in valid ranges
             for (int i = 0; i < pixelData.Length; i += 3)
