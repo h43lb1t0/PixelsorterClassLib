@@ -59,9 +59,9 @@ public class Image
     public static Image<Rgba32> NdarrayToImgData(NDArray data)
     {
         var shape = data.shape;
-        int height = shape[0];
-        int width = shape[1];
-        int channels = shape[2];
+        int height = (int)shape[0];
+        int width = (int)shape[1];
+        int channels = (int)shape[2];
 
         var sourceData = data.ToArray<float>();
 
