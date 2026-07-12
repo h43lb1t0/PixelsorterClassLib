@@ -25,9 +25,9 @@ public class Sorter
     public static NDArray SortImage(NDArray imageData, Func<Hsl, float> sortingFunction, SortDirections sortDirections, NDArray? mask = null)
     {
         var shape = imageData.shape;
-        int height = shape[0];
-        int width = shape[1];
-        int channels = shape[2];
+        int height = (int)shape[0];
+        int width = (int)shape[1];
+        int channels = (int)shape[2];
 
         // HSL requires float precision (H: 0-360, S: 0-1, L: 0-1)
         var sourceData = imageData.ToArray<float>();
@@ -42,7 +42,7 @@ public class Sorter
         if (mask is not null)
         {
             maskData = mask.ToArray<byte>();
-            maskChannels = mask.shape[2];
+            maskChannels = (int)mask.shape[2];
         }
 
         if (sortDirections == SortDirections.IntoMask)

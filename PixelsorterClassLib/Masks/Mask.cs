@@ -1,6 +1,7 @@
 ﻿using NumSharp;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 
 namespace PixelsorterClassLib.Masks
 {
@@ -44,7 +45,9 @@ namespace PixelsorterClassLib.Masks
 
         internal Image<L8> LoadL8Image(string inputImagePath)
         {
-            return Image.Load<L8>(inputImagePath) ?? throw new InvalidOperationException("Failed to load the input image.");
+            var image = Image.Load<L8>(inputImagePath) ?? throw new InvalidOperationException("Failed to load the input image.");
+            image.Mutate(x => x.AutoOrient());
+            return image;
         }
 
         public abstract (NDArray mask, NDArray invertedMask) GetMask(String imagePath, TOptions options);

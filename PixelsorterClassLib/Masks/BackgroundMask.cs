@@ -92,7 +92,9 @@ namespace PixelsorterClassLib.Masks
 
         private Image<Rgba32> LoadImage(String inputImagePath)
         {
-            return Image.Load<Rgba32>(inputImagePath) ?? throw new InvalidOperationException("Failed to load the input image.");
+            var image = Image.Load<Rgba32>(inputImagePath) ?? throw new InvalidOperationException("Failed to load the input image.");
+            image.Mutate(x => x.AutoOrient());
+            return image;
         }
 
 
