@@ -20,16 +20,16 @@ internal class Program
     private static void Main(string[] args)
     {
 
-        String inputImagePath = "D:\\Documents\\codeing\\PixelsorterProject\\PixelsorterClassLib\\ConsoleApp\\examples\\alone-4480442.jpg";
+        String inputImagePath = "E:\\Bilder\\pixel_input\\before_3.jpg";
         String outputDirectory = "D:\\Documents\\codeing\\PixelsorterProject\\PixelsorterClassLib\\ConsoleApp\\examples\\";
 
         var img = PixelsorterClassLib.Core.Image.LoadImage(inputImagePath);
 
 
-        var masker = new ChunkMask();
+        var masker = new LuminanceMask();
 
 
-        (var j, var k) = masker.GetMask(inputImagePath, new ChunkMaskOptions(1500, 3500, SortDirections.ColumnBottomToTop));
+        (var j, var k) = masker.GetMask(inputImagePath, new LuminanceMaskOptions(0.25f));
 
         var foo = Sorter.SortImage(img, SortBy.Warmth(), SortDirections.ColumnBottomToTop, j);
         var voo = Sorter.SortImage(img, SortBy.Warmth(), SortDirections.ColumnBottomToTop, k);
