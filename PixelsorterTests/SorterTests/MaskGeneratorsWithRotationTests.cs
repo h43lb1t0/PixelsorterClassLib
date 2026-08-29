@@ -250,10 +250,7 @@ namespace Pixelsorter.Tests.SorterTests
             var backgroundMask = new BackgroundMask();
 
             // Skip test if model is not available
-            if (!backgroundMask.IsReadyToUse)
-            {
-                return; // Skip this test if model is not available
-            }
+            Assert.SkipWhen(!backgroundMask.IsReadyToUse, "BackgroundMask model is not downloaded/available");
 
             string testImagePath = ImageTestHelpers.GetTestImageWithExifRotation();
             var options = new BackgroundMaskOptions(fadeWidth: 10, confidenceThreshold: 0.5f);
