@@ -31,21 +31,13 @@ internal class Program
 
         (var j, var k) = masker.GetMask(inputImagePath, new BackgroundMaskOptions(1));
 
-        var watchB = System.Diagnostics.Stopwatch.StartNew();
 
-        var foo = Sorter.SortImageB(img, SortBy.Warmth(), SortDirections.RowLeftToRight, j);
-        watchB.Stop();
-        var watchA = System.Diagnostics.Stopwatch.StartNew();
-        var voo = Sorter.SortImageA(img, SortBy.Warmth(), SortDirections.RowLeftToRight, j);
-        watchA.Stop();
-
-        Console.WriteLine($"Time taken for SortImageB: {watchB.ElapsedMilliseconds} ms");
-        Console.WriteLine($"Time taken for SortImageA: {watchA.ElapsedMilliseconds} ms");
+        var foo = Sorter.SortImage(img, SortBy.Warmth(), SortDirections.RowLeftToRight, j);
+        
 
 
 
         PixelsorterClassLib.Core.Image.SaveImage(foo, $"{outputDirectory}_B.jpg");
-        PixelsorterClassLib.Core.Image.SaveImage(voo, $"{outputDirectory}_A.jpg");
 
 
     }
