@@ -90,6 +90,12 @@ public class Sorter
         return rays;
     }
 
+    /// <summary>
+    /// Maps the specified SortDirections enum value to a corresponding angle in degrees.
+    /// </summary>
+    /// <param name="direction"></param>
+    /// <returns></returns>
+    /// <exception cref="ArgumentException"></exception>
     private static float MapDirectionToAngle(SortDirections direction)
     {
         return direction switch
@@ -113,6 +119,10 @@ public class Sorter
     /// <returns>Sorted image as a 3D NumSharp array</returns>
     public static NDArray SortImage(NDArray imageData, Func<Hsl, float> sortingFunction, SortDirections sortDirections, NDArray? mask = null, float angle = -1f)
     {
+        if (sortDirections == SortDirections.ArbitraryAngle && (angle < 0f || angle > 360f))
+        {
+            throw new ArgumentException("Angle must be between 0 and 360 degrees for arbitrary angle sorting.", nameof(angle));
+        }
         var shape = imageData.shape;
         int height = (int)shape[0];
         int width = (int)shape[1];
@@ -150,8 +160,6 @@ public class Sorter
 
             Parallel.ForEach(rays, ray =>
             {
-                // OPTIMIZATION 1: Zero-allocation buffers. 
-                // A straight line in a bounding box can never be longer than width + height.
                 int maxLineLength = width + height;
                 var runOffsets = new int[maxLineLength];
                 var runPixels = new PixelSortData[maxLineLength];
@@ -164,8 +172,6 @@ public class Sorter
                         runLength = 0;
                         return;
                     }
-
-                    // Sort only the active part of our pre-allocated array (No .ToArray() allocation!)
                     Array.Sort(runPixels, 0, runLength);
 
                     for (int i = 0; i < runLength; i++)
@@ -200,11 +206,14 @@ public class Sorter
                 int sxMaskStep = sx * maskChannels;
                 int syMaskStep = sy * width * maskChannels;
 
+                bool hasMask = maskData != null;
+                bool hasAlpha = channels > 3;
+
                 while (true)
                 {
                     // No bounds check needed - rays are guaranteed to be strictly within the image
 
-                    bool insideMask = maskData == null || maskData[maskOffset] >= 128;
+                    bool insideMask = !hasMask || maskData![maskOffset] >= 128;
 
                     if (insideMask)
                     {
