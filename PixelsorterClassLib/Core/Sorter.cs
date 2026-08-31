@@ -14,31 +14,13 @@ public class Sorter
 {
     public Sorter() { }
 
-
     /// <summary>
-    /// Generates the points of a line between two coordinates using Bresenham's line algorithm.
+    /// Generates a list of rays using Bresenham's line algorithm, starting from the edges of the image and extending in the specified angle direction.
     /// </summary>
-    /// <param name="x0">The x-coordinate of the first point.</param>
-    /// <param name="y0">The y-coordinate of the first point.</param>
-    /// <param name="x1">The x-coordinate of the second point.</param>
-    /// <param name="y1">The y-coordinate of the second point.</param>
-    /// <returns>An enumerable collection of points that form the line between the two coordinates.</returns>
-    private static IEnumerable<(int X, int Y)> GetBresenhamLine(int x0, int y0, int x1, int y1)
-    {
-        int dx = Math.Abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
-        int dy = -Math.Abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
-        int err = dx + dy, e2;
-
-        while (true)
-        {
-            yield return (x0, y0);
-            if (x0 == x1 && y0 == y1) break;
-            e2 = 2 * err;
-            if (e2 >= dy) { err += dy; x0 += sx; }
-            if (e2 <= dx) { err += dx; y0 += sy; }
-        }
-    }
-
+    /// <param name="width">The width of the image.</param>
+    /// <param name="height">The height of the image.</param>
+    /// <param name="angle">The angle in degrees to extend the rays.</param>
+    /// <returns>A list of rays represented as tuples of start and end points.</returns>
     private static List<((int X, int Y) start, (int X, int Y) end)> GetBresenhamRays(int width, int height, float angle)
     {
         var rays = new List<((int X, int Y) start, (int X, int Y) end)>();
@@ -129,7 +111,7 @@ public class Sorter
     /// <param name="angle">The angle at which to sort the pixels (in degrees). This parameter is optional and defaults to -1, which indicates that the angle should be determined based on the sortDirections parameter.</param>
     /// <param name="mask">Optional 3D NumSharp array representing a binary mask to define sortable segments</param>
     /// <returns>Sorted image as a 3D NumSharp array</returns>
-    public static NDArray SortImageB(NDArray imageData, Func<Hsl, float> sortingFunction, SortDirections sortDirections, NDArray? mask = null, float angle = -1f)
+    public static NDArray SortImage(NDArray imageData, Func<Hsl, float> sortingFunction, SortDirections sortDirections, NDArray? mask = null, float angle = -1f)
     {
         var shape = imageData.shape;
         int height = (int)shape[0];
@@ -161,203 +143,105 @@ public class Sorter
 
             ApplyRadialMaskSort(sourceData, resultData, width, height, channels, maskData, maskChannels, sortingFunction);
         }
-        else {
+        else
+        {
             float actualAngle = angle >= 0f ? angle : MapDirectionToAngle(sortDirections);
             rays = GetBresenhamRays(width, height, actualAngle);
 
-            Parallel.ForEach(rays, (ray) =>
+            Parallel.ForEach(rays, ray =>
             {
-                var runOffsets = new List<int>();
-                var runPixels = new List<PixelSortData>();
+                // OPTIMIZATION 1: Zero-allocation buffers. 
+                // A straight line in a bounding box can never be longer than width + height.
+                int maxLineLength = width + height;
+                var runOffsets = new int[maxLineLength];
+                var runPixels = new PixelSortData[maxLineLength];
+                int runLength = 0;
 
                 void FlushRun()
                 {
-                    if (runOffsets.Count <= 1)
+                    if (runLength <= 1)
                     {
-                        runOffsets.Clear();
-                        runPixels.Clear();
+                        runLength = 0;
                         return;
                     }
-                    var buffer = runPixels.ToArray();
-                    Array.Sort(buffer, 0, buffer.Length);
-                    for (int i = 0; i < runOffsets.Count; i++)
+
+                    // Sort only the active part of our pre-allocated array (No .ToArray() allocation!)
+                    Array.Sort(runPixels, 0, runLength);
+
+                    for (int i = 0; i < runLength; i++)
                     {
-                        ref var pixel = ref buffer[i];
+                        ref var pixel = ref runPixels[i];
                         int pixelOffset = runOffsets[i];
                         resultData[pixelOffset] = pixel.H;
                         resultData[pixelOffset + 1] = pixel.S;
                         resultData[pixelOffset + 2] = pixel.L;
                         if (channels > 3) resultData[pixelOffset + 3] = pixel.A;
                     }
-                    runOffsets.Clear();
-                    runPixels.Clear();
+
+                    runLength = 0; // Reset length for the next segment
                 }
 
-                foreach (var (x, y) in GetBresenhamLine(ray.start.Item1, ray.start.Item2, ray.end.Item1, ray.end.Item2))
+                // OPTIMIZATION 2: Inlined Bresenham with Incremental Offsets
+                int x0 = ray.start.Item1;
+                int y0 = ray.start.Item2;
+                int x1 = ray.end.Item1;
+                int y1 = ray.end.Item2;
+
+                int dx = Math.Abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+                int dy = -Math.Abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+                int err = dx + dy, e2;
+
+                // Pre-calculate the exact array index increments
+                int pixelOffset = (y0 * width + x0) * channels;
+                int maskOffset = (y0 * width + x0) * maskChannels;
+
+                int sxPixelStep = sx * channels;
+                int syPixelStep = sy * width * channels;
+                int sxMaskStep = sx * maskChannels;
+                int syMaskStep = sy * width * maskChannels;
+
+                while (true)
                 {
-                    // Basic bounds safety check
-                    if (x < 0 || x >= width || y < 0 || y >= height) continue;
-                    bool insideMask = true;
-                    if (maskData != null)
-                    {
-                        int maskIndex = (y * width + x) * maskChannels;
-                        insideMask = maskData[maskIndex] >= 128;
-                    }
+                    // No bounds check needed - rays are guaranteed to be strictly within the image
+
+                    bool insideMask = maskData == null || maskData[maskOffset] >= 128;
+
                     if (insideMask)
                     {
-                        int pixelOffset = (y * width + x) * channels;
                         float h = sourceData[pixelOffset];
                         float s = sourceData[pixelOffset + 1];
                         float l = sourceData[pixelOffset + 2];
                         float a = channels > 3 ? sourceData[pixelOffset + 3] : 1f;
-                        runOffsets.Add(pixelOffset);
-                        runPixels.Add(new PixelSortData(h, s, l, a, sortingFunction(new Hsl(h, s, l))));
+
+                        runOffsets[runLength] = pixelOffset;
+                        runPixels[runLength] = new PixelSortData(h, s, l, a, sortingFunction(new Hsl(h, s, l)));
+                        runLength++;
                     }
                     else
                     {
                         FlushRun();
                     }
+
+                    if (x0 == x1 && y0 == y1) break;
+
+                    e2 = 2 * err;
+                    if (e2 >= dy)
+                    {
+                        err += dy;
+                        x0 += sx;
+                        pixelOffset += sxPixelStep; // Increment offset exactly 1 pixel horizontally
+                        maskOffset += sxMaskStep;
+                    }
+                    if (e2 <= dx)
+                    {
+                        err += dx;
+                        y0 += sy;
+                        pixelOffset += syPixelStep; // Increment offset exactly 1 pixel vertically
+                        maskOffset += syMaskStep;
+                    }
                 }
 
-                // Flush anything left at the end of the line
                 FlushRun();
-            } );
-        }
-
-        return np.array(resultData).reshape(shape);
-    }
-
-
-    public static NDArray SortImageA(NDArray imageData, Func<Hsl, float> sortingFunction, SortDirections sortDirections, NDArray? mask = null)
-    {
-        var shape = imageData.shape;
-        int height = (int)shape[0];
-        int width = (int)shape[1];
-        int channels = (int)shape[2];
-
-        // HSL requires float precision (H: 0-360, S: 0-1, L: 0-1)
-        var sourceData = imageData.ToArray<float>();
-        var resultData = new float[sourceData.Length];
-
-        // Unsorted pixels keep their original values
-        Array.Copy(sourceData, resultData, sourceData.Length);
-
-        // Mask remains byte data since it evaluates thresholds (0-255)
-        byte[]? maskData = null;
-        int maskChannels = 4;
-        if (mask is not null)
-        {
-            maskData = mask.ToArray<byte>();
-            maskChannels = (int)mask.shape[2];
-        }
-
-        if (sortDirections == SortDirections.IntoMask)
-        {
-            if (maskData is null)
-                throw new ArgumentException("A mask is required for IntoMask sorting.", nameof(mask));
-
-            ApplyRadialMaskSort(sourceData, resultData, width, height, channels, maskData, maskChannels, sortingFunction);
-        }
-        else if (sortDirections == SortDirections.RowRightToLeft || sortDirections == SortDirections.RowLeftToRight)
-        {
-            Parallel.For(0, height, y =>
-            {
-                int rowOffset = y * width * channels;
-                int maskRowOffset = y * width * maskChannels;
-                int x = 0;
-
-                while (x < width)
-                {
-                    if (maskData != null && maskData[maskRowOffset + x * maskChannels] < 128)
-                    {
-                        x++;
-                        continue;
-                    }
-
-                    int segStart = x;
-                    while (x < width && (maskData == null || maskData[maskRowOffset + x * maskChannels] >= 128))
-                        x++;
-                    int segLen = x - segStart;
-
-                    if (segLen <= 1) continue;
-
-                    var pixelBuffer = new PixelSortData[segLen];
-                    for (int i = 0; i < segLen; i++)
-                    {
-                        int pixelOffset = rowOffset + (segStart + i) * channels;
-                        float h = sourceData[pixelOffset];
-                        float s = sourceData[pixelOffset + 1];
-                        float l = sourceData[pixelOffset + 2];
-                        float a = channels > 3 ? sourceData[pixelOffset + 3] : 1f;
-
-                        pixelBuffer[i] = new PixelSortData(h, s, l, a, sortingFunction(new Hsl(h, s, l)));
-                    }
-
-                    Array.Sort(pixelBuffer, 0, segLen);
-
-                    for (int i = 0; i < segLen; i++)
-                    {
-                        int pixelOffset = rowOffset + (segStart + i) * channels;
-                        int sourceIndex = sortDirections == SortDirections.RowRightToLeft ? segLen - 1 - i : i;
-                        ref var pixel = ref pixelBuffer[sourceIndex];
-
-                        resultData[pixelOffset] = pixel.H;
-                        resultData[pixelOffset + 1] = pixel.S;
-                        resultData[pixelOffset + 2] = pixel.L;
-                        if (channels > 3) resultData[pixelOffset + 3] = pixel.A;
-                    }
-                }
-            });
-        }
-        else
-        {
-            Parallel.For(0, width, x =>
-            {
-                int columnOffset = x * channels;
-                int maskColumnOffset = x * maskChannels;
-                int y = 0;
-
-                while (y < height)
-                {
-                    if (maskData != null && maskData[y * width * maskChannels + maskColumnOffset] < 128)
-                    {
-                        y++;
-                        continue;
-                    }
-
-                    int segStart = y;
-                    while (y < height && (maskData == null || maskData[y * width * maskChannels + maskColumnOffset] >= 128))
-                        y++;
-                    int segLen = y - segStart;
-
-                    if (segLen <= 1) continue;
-
-                    var pixelBuffer = new PixelSortData[segLen];
-                    for (int i = 0; i < segLen; i++)
-                    {
-                        int pixelOffset = columnOffset + (segStart + i) * width * channels;
-                        float h = sourceData[pixelOffset];
-                        float s = sourceData[pixelOffset + 1];
-                        float l = sourceData[pixelOffset + 2];
-                        float a = channels > 3 ? sourceData[pixelOffset + 3] : 1f;
-
-                        pixelBuffer[i] = new PixelSortData(h, s, l, a, sortingFunction(new Hsl(h, s, l)));
-                    }
-
-                    Array.Sort(pixelBuffer, 0, segLen);
-
-                    for (int i = 0; i < segLen; i++)
-                    {
-                        int pixelOffset = columnOffset + (segStart + i) * width * channels;
-                        int sourceIndex = sortDirections == SortDirections.ColumnBottomToTop ? segLen - 1 - i : i;
-                        ref var pixel = ref pixelBuffer[sourceIndex];
-
-                        resultData[pixelOffset] = pixel.H;
-                        resultData[pixelOffset + 1] = pixel.S;
-                        resultData[pixelOffset + 2] = pixel.L;
-                        if (channels > 3) resultData[pixelOffset + 3] = pixel.A;
-                    }
-                }
             });
         }
 
