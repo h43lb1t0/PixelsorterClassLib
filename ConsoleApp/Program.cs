@@ -26,18 +26,26 @@ internal class Program
         var img = PixelsorterClassLib.Core.Image.LoadImage(inputImagePath);
 
 
-        var masker = new LuminanceMask();
+        var masker = new BackgroundMask();
 
 
-        (var j, var k) = masker.GetMask(inputImagePath, new LuminanceMaskOptions(0.25f));
+        (var j, var k) = masker.GetMask(inputImagePath, new BackgroundMaskOptions(1));
 
-        var foo = Sorter.SortImage(img, SortBy.Warmth(), SortDirections.ColumnBottomToTop, j);
-        var voo = Sorter.SortImage(img, SortBy.Warmth(), SortDirections.ColumnBottomToTop, k);
+        var watchB = System.Diagnostics.Stopwatch.StartNew();
+
+        var foo = Sorter.SortImageB(img, SortBy.Warmth(), SortDirections.RowLeftToRight, j);
+        watchB.Stop();
+        var watchA = System.Diagnostics.Stopwatch.StartNew();
+        var voo = Sorter.SortImageA(img, SortBy.Warmth(), SortDirections.RowLeftToRight, j);
+        watchA.Stop();
+
+        Console.WriteLine($"Time taken for SortImageB: {watchB.ElapsedMilliseconds} ms");
+        Console.WriteLine($"Time taken for SortImageA: {watchA.ElapsedMilliseconds} ms");
 
 
 
-        PixelsorterClassLib.Core.Image.SaveImage(foo, $"{outputDirectory}_j.jpg");
-        PixelsorterClassLib.Core.Image.SaveImage(voo, $"{outputDirectory}_k.jpg");
+        PixelsorterClassLib.Core.Image.SaveImage(foo, $"{outputDirectory}_B.jpg");
+        PixelsorterClassLib.Core.Image.SaveImage(voo, $"{outputDirectory}_A.jpg");
 
 
     }

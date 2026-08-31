@@ -39,7 +39,76 @@ public class Sorter
         }
     }
 
-    private float MapDirectionToAngle(SortDirections direction)
+    private static List<((int X, int Y) start, (int X, int Y) end)> GetBresenhamRays(int width, int height, float angle)
+    {
+        var rays = new List<((int X, int Y) start, (int X, int Y) end)>();
+
+        // Normalize angle to 0-360 degrees
+        angle = (angle % 360f + 360f) % 360f;
+        double angleRad = angle * Math.PI / 180.0;
+
+        double dx = Math.Cos(angleRad);
+        double dy = Math.Sin(angleRad);
+
+        // Snap to pure vertical/horizontal if very close, to avoid floating point overlap anomalies
+        if (Math.Abs(dx) < 1e-5) dx = 0;
+        if (Math.Abs(dy) < 1e-5) dy = 0;
+
+        // Helper to find where the ray exits the image bounding box
+        (int, int) GetEndPoint(int startX, int startY)
+        {
+            double tx = double.PositiveInfinity;
+            double ty = double.PositiveInfinity;
+
+            if (dx > 0) tx = (width - 1 - startX) / dx;
+            else if (dx < 0) tx = (0 - startX) / dx;
+
+            if (dy > 0) ty = (height - 1 - startY) / dy;
+            else if (dy < 0) ty = (0 - startY) / dy;
+
+            double t = Math.Min(tx, ty);
+            int endX = (int)Math.Round(startX + t * dx);
+            int endY = (int)Math.Round(startY + t * dy);
+
+            return (Math.Clamp(endX, 0, width - 1), Math.Clamp(endY, 0, height - 1));
+        }
+
+        // Generate start points on the "incoming" edges based on the direction vector
+        if (dx == 0) // Vertical
+        {
+            int startY = dy > 0 ? 0 : height - 1;
+            for (int x = 0; x < width; x++) rays.Add(((x, startY), GetEndPoint(x, startY)));
+        }
+        else if (dy == 0) // Horizontal
+        {
+            int startX = dx > 0 ? 0 : width - 1;
+            for (int y = 0; y < height; y++) rays.Add(((startX, y), GetEndPoint(startX, y)));
+        }
+        else if (dx > 0 && dy > 0) // 0 to 90 degrees (Down-Right)
+        {
+            for (int y = 0; y < height; y++) rays.Add(((0, y), GetEndPoint(0, y)));
+            for (int x = 1; x < width; x++) rays.Add(((x, 0), GetEndPoint(x, 0)));
+        }
+        else if (dx < 0 && dy > 0) // 90 to 180 degrees (Down-Left)
+        {
+            for (int y = 0; y < height; y++) rays.Add(((width - 1, y), GetEndPoint(width - 1, y)));
+            for (int x = 0; x < width - 1; x++) rays.Add(((x, 0), GetEndPoint(x, 0)));
+        }
+        else if (dx < 0 && dy < 0) // 180 to 270 degrees (Up-Left)
+        {
+            for (int y = 0; y < height; y++) rays.Add(((width - 1, y), GetEndPoint(width - 1, y)));
+            for (int x = 0; x < width - 1; x++) rays.Add(((x, height - 1), GetEndPoint(x, height - 1)));
+        }
+        else // 270 to 360 degrees (Up-Right)
+        {
+            for (int y = 0; y < height; y++) rays.Add(((0, y), GetEndPoint(0, y)));
+            for (int x = 1; x < width; x++) rays.Add(((x, height - 1), GetEndPoint(x, height - 1)));
+        }
+
+        return rays;
+    }
+
+    private static float MapDirectionToAngle(SortDirections direction)
     {
         return direction switch
         {
@@ -60,7 +129,106 @@ public class Sorter
     /// <param name="angle">The angle at which to sort the pixels (in degrees). This parameter is optional and defaults to -1, which indicates that the angle should be determined based on the sortDirections parameter.</param>
     /// <param name="mask">Optional 3D NumSharp array representing a binary mask to define sortable segments</param>
     /// <returns>Sorted image as a 3D NumSharp array</returns>
-    public static NDArray SortImage(NDArray imageData, Func<Hsl, float> sortingFunction, SortDirections sortDirections, float angle = -1f, NDArray? mask = null)
+    public static NDArray SortImageB(NDArray imageData, Func<Hsl, float> sortingFunction, SortDirections sortDirections, NDArray? mask = null, float angle = -1f)
+    {
+        var shape = imageData.shape;
+        int height = (int)shape[0];
+        int width = (int)shape[1];
+        int channels = (int)shape[2];
+
+        // HSL requires float precision (H: 0-360, S: 0-1, L: 0-1)
+        var sourceData = imageData.ToArray<float>();
+        var resultData = new float[sourceData.Length];
+
+        List<((int, int) start, (int, int) end)> rays = [];
+
+        // Unsorted pixels keep their original values
+        Array.Copy(sourceData, resultData, sourceData.Length);
+
+        // Mask remains byte data since it evaluates thresholds (0-255)
+        byte[]? maskData = null;
+        int maskChannels = 4;
+        if (mask is not null)
+        {
+            maskData = mask.ToArray<byte>();
+            maskChannels = (int)mask.shape[2];
+        }
+
+        if (sortDirections == SortDirections.IntoMask)
+        {
+            if (maskData is null)
+                throw new ArgumentException("A mask is required for IntoMask sorting.", nameof(mask));
+
+            ApplyRadialMaskSort(sourceData, resultData, width, height, channels, maskData, maskChannels, sortingFunction);
+        }
+        else {
+            float actualAngle = angle >= 0f ? angle : MapDirectionToAngle(sortDirections);
+            rays = GetBresenhamRays(width, height, actualAngle);
+
+            Parallel.ForEach(rays, (ray) =>
+            {
+                var runOffsets = new List<int>();
+                var runPixels = new List<PixelSortData>();
+
+                void FlushRun()
+                {
+                    if (runOffsets.Count <= 1)
+                    {
+                        runOffsets.Clear();
+                        runPixels.Clear();
+                        return;
+                    }
+                    var buffer = runPixels.ToArray();
+                    Array.Sort(buffer, 0, buffer.Length);
+                    for (int i = 0; i < runOffsets.Count; i++)
+                    {
+                        ref var pixel = ref buffer[i];
+                        int pixelOffset = runOffsets[i];
+                        resultData[pixelOffset] = pixel.H;
+                        resultData[pixelOffset + 1] = pixel.S;
+                        resultData[pixelOffset + 2] = pixel.L;
+                        if (channels > 3) resultData[pixelOffset + 3] = pixel.A;
+                    }
+                    runOffsets.Clear();
+                    runPixels.Clear();
+                }
+
+                foreach (var (x, y) in GetBresenhamLine(ray.start.Item1, ray.start.Item2, ray.end.Item1, ray.end.Item2))
+                {
+                    // Basic bounds safety check
+                    if (x < 0 || x >= width || y < 0 || y >= height) continue;
+                    bool insideMask = true;
+                    if (maskData != null)
+                    {
+                        int maskIndex = (y * width + x) * maskChannels;
+                        insideMask = maskData[maskIndex] >= 128;
+                    }
+                    if (insideMask)
+                    {
+                        int pixelOffset = (y * width + x) * channels;
+                        float h = sourceData[pixelOffset];
+                        float s = sourceData[pixelOffset + 1];
+                        float l = sourceData[pixelOffset + 2];
+                        float a = channels > 3 ? sourceData[pixelOffset + 3] : 1f;
+                        runOffsets.Add(pixelOffset);
+                        runPixels.Add(new PixelSortData(h, s, l, a, sortingFunction(new Hsl(h, s, l))));
+                    }
+                    else
+                    {
+                        FlushRun();
+                    }
+                }
+
+                // Flush anything left at the end of the line
+                FlushRun();
+            } );
+        }
+
+        return np.array(resultData).reshape(shape);
+    }
+
+
+    public static NDArray SortImageA(NDArray imageData, Func<Hsl, float> sortingFunction, SortDirections sortDirections, NDArray? mask = null)
     {
         var shape = imageData.shape;
         int height = (int)shape[0];
@@ -195,6 +363,8 @@ public class Sorter
 
         return np.array(resultData).reshape(shape);
     }
+
+
 
     /// <summary>
     /// Struct to hold pixel data and sort value for efficient sorting
