@@ -26,18 +26,18 @@ internal class Program
         var img = PixelsorterClassLib.Core.Image.LoadImage(inputImagePath);
 
 
-        var masker = new LuminanceMask();
+        var masker = new BackgroundMask();
 
 
-        (var j, var k) = masker.GetMask(inputImagePath, new LuminanceMaskOptions(0.25f));
-
-        var foo = Sorter.SortImage(img, SortBy.Warmth(), SortDirections.ColumnBottomToTop, j);
-        var voo = Sorter.SortImage(img, SortBy.Warmth(), SortDirections.ColumnBottomToTop, k);
+        (var j, var k) = masker.GetMask(inputImagePath, new BackgroundMaskOptions(1));
 
 
+        var foo = Sorter.SortImage(img, SortBy.Warmth(), SortDirections.RowLeftToRight, j);
+        
 
-        PixelsorterClassLib.Core.Image.SaveImage(foo, $"{outputDirectory}_j.jpg");
-        PixelsorterClassLib.Core.Image.SaveImage(voo, $"{outputDirectory}_k.jpg");
+
+
+        PixelsorterClassLib.Core.Image.SaveImage(foo, $"{outputDirectory}_B.jpg");
 
 
     }
