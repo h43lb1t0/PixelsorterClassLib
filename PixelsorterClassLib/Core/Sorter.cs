@@ -14,15 +14,53 @@ public class Sorter
 {
     public Sorter() { }
 
+
+    /// <summary>
+    /// Generates the points of a line between two coordinates using Bresenham's line algorithm.
+    /// </summary>
+    /// <param name="x0">The x-coordinate of the first point.</param>
+    /// <param name="y0">The y-coordinate of the first point.</param>
+    /// <param name="x1">The x-coordinate of the second point.</param>
+    /// <param name="y1">The y-coordinate of the second point.</param>
+    /// <returns>An enumerable collection of points that form the line between the two coordinates.</returns>
+    private static IEnumerable<(int X, int Y)> GetBresenhamLine(int x0, int y0, int x1, int y1)
+    {
+        int dx = Math.Abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+        int dy = -Math.Abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+        int err = dx + dy, e2;
+
+        while (true)
+        {
+            yield return (x0, y0);
+            if (x0 == x1 && y0 == y1) break;
+            e2 = 2 * err;
+            if (e2 >= dy) { err += dy; x0 += sx; }
+            if (e2 <= dx) { err += dx; y0 += sy; }
+        }
+    }
+
+    private float MapDirectionToAngle(SortDirections direction)
+    {
+        return direction switch
+        {
+            SortDirections.RowLeftToRight => 0f,
+            SortDirections.RowRightToLeft => 180f,
+            SortDirections.ColumnTopToBottom => 90f,
+            SortDirections.ColumnBottomToTop => 270f,
+            _ => throw new ArgumentException("Invalid sort direction for angle mapping.", nameof(direction)),
+        };
+    }
+
     /// <summary>
     /// Sorts the pixels in an image row by row based on the provided sorting criterion.
     /// </summary>
     /// <param name="imageData">3D NumSharp array representing the image in HSL (height x width x channels)</param>
     /// <param name="sortingFunction">Function that extracts a comparable value from an HSL pixel</param>
     /// <param name="sortDirections">Direction in which to sort the pixels (e.g., left-to-right, right-to-left)</param>
+    /// <param name="angle">The angle at which to sort the pixels (in degrees). This parameter is optional and defaults to -1, which indicates that the angle should be determined based on the sortDirections parameter.</param>
     /// <param name="mask">Optional 3D NumSharp array representing a binary mask to define sortable segments</param>
     /// <returns>Sorted image as a 3D NumSharp array</returns>
-    public static NDArray SortImage(NDArray imageData, Func<Hsl, float> sortingFunction, SortDirections sortDirections, NDArray? mask = null)
+    public static NDArray SortImage(NDArray imageData, Func<Hsl, float> sortingFunction, SortDirections sortDirections, float angle = -1f, NDArray? mask = null)
     {
         var shape = imageData.shape;
         int height = (int)shape[0];
