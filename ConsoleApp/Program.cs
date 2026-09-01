@@ -31,9 +31,13 @@ internal class Program
 
         (var j, var k) = masker.GetMask(inputImagePath, new BackgroundMaskOptions(1));
 
+        var timer = System.Diagnostics.Stopwatch.StartNew();
 
-        var foo = Sorter.SortImage(img, SortBy.Warmth(), SortDirections.RowLeftToRight, j);
+        var foo = Sorter.SortImage(img, SortBy.Warmth(), SortDirections.ArbitraryAngle, j, 45f);
         
+        timer.Stop();
+
+        Console.WriteLine($"Sorting completed in {timer.ElapsedMilliseconds} ms");
 
 
 
