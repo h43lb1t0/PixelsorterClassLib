@@ -1,4 +1,5 @@
 using NumSharp;
+using NumSharp.Backends.Unmanaged;
 using SixLabors.ImageSharp.ColorSpaces;
 
 namespace PixelsorterClassLib.Core;
@@ -130,13 +131,15 @@ public class Sorter
         bool hasAlpha = channels > 3;
 
         // HSL requires float precision (H: 0-360, S: 0-1, L: 0-1)
-        var sourceData = imageData.ToArray<float>();
-        var resultData = new float[sourceData.Length];
+        // Data<T>() returns an ArraySlice<T> referencing unmanaged memory directly (zero-copy)
+        var sourceData = imageData.Data<float>();
+        int totalElements = (int)sourceData.Count;
+        var resultData = new float[totalElements];
 
         List<((int, int) start, (int, int) end)> rays = [];
 
-        // Unsorted pixels keep their original values
-        Array.Copy(sourceData, resultData, sourceData.Length);
+        // Unsorted pixels keep their original values — copy directly from unmanaged source
+        sourceData.CopyTo(resultData.AsSpan());
 
         // Mask remains byte data since it evaluates thresholds (0-255)
         byte[]? maskData = null;
@@ -269,7 +272,8 @@ public class Sorter
             );
         }
 
-        return np.array(resultData).reshape(shape);
+        // Wrap resultData directly — no copy, NDArray references the existing array
+        return new NDArray(resultData, new Shape(height, width, channels));
     }
 
 
@@ -297,7 +301,7 @@ public class Sorter
     /// <summary>
     /// Sorts pixels within the masked region along radial lines pointing toward the mask centroid.
     /// </summary>
-    private static void ApplyRadialMaskSort(float[] sourceData, float[] resultData, int width, int height, int channels, byte[] maskData, int maskChannels, Func<Hsl, float> sortingFunction)
+    private static void ApplyRadialMaskSort(ArraySlice<float> sourceData, float[] resultData, int width, int height, int channels, byte[] maskData, int maskChannels, Func<Hsl, float> sortingFunction)
     {
         var (centerX, centerY) = GetMaskCentroid(maskData, width, height, maskChannels);
 
