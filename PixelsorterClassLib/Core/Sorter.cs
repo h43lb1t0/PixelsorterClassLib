@@ -28,20 +28,20 @@ public class Sorter
 
         // Normalize angle to 0-360 degrees
         angle = (angle % 360f + 360f) % 360f;
-        double angleRad = angle * Math.PI / 180.0;
+        float angleRad = angle * MathF.PI / 180.0f;
 
-        double dx = Math.Cos(angleRad);
-        double dy = Math.Sin(angleRad);
+        float dx = MathF.Cos(angleRad);
+        float dy = MathF.Sin(angleRad);
 
         // Snap to pure vertical/horizontal if very close, to avoid floating point overlap anomalies
-        if (Math.Abs(dx) < 1e-5) dx = 0;
-        if (Math.Abs(dy) < 1e-5) dy = 0;
+        if (MathF.Abs(dx) < 1e-5f) dx = 0f;
+        if (MathF.Abs(dy) < 1e-5f) dy = 0f;
 
         // Helper to find where the ray exits the image bounding box
         (int, int) GetEndPoint(int startX, int startY)
         {
-            double tx = double.PositiveInfinity;
-            double ty = double.PositiveInfinity;
+            float tx = float.PositiveInfinity;
+            float ty = float.PositiveInfinity;
 
             if (dx > 0) tx = (width - 1 - startX) / dx;
             else if (dx < 0) tx = (0 - startX) / dx;
@@ -49,9 +49,9 @@ public class Sorter
             if (dy > 0) ty = (height - 1 - startY) / dy;
             else if (dy < 0) ty = (0 - startY) / dy;
 
-            double t = Math.Min(tx, ty);
-            int endX = (int)Math.Round(startX + t * dx);
-            int endY = (int)Math.Round(startY + t * dy);
+            float t = MathF.Min(tx, ty);
+            int endX = (int)MathF.Round(startX + t * dx);
+            int endY = (int)MathF.Round(startY + t * dy);
 
             return (Math.Clamp(endX, 0, width - 1), Math.Clamp(endY, 0, height - 1));
         }
@@ -306,13 +306,13 @@ public class Sorter
         var (centerX, centerY) = GetMaskCentroid(maskData, width, height, maskChannels);
 
         int angleBuckets = Math.Max(360, Math.Max(width, height));
-        var buckets = new List<(int X, int Y, double Dist)>[angleBuckets];
-        double cx = centerX + 0.5;
-        double cy = centerY + 0.5;
+        var buckets = new List<(int X, int Y, float Dist)>[angleBuckets];
+        float cx = centerX + 0.5f;
+        float cy = centerY + 0.5f;
 
         for (int i = 0; i < angleBuckets; i++)
         {
-            buckets[i] = new List<(int X, int Y, double Dist)>();
+            buckets[i] = new List<(int X, int Y, float Dist)>();
         }
 
         // Pre-calculate alpha requirement
@@ -322,11 +322,11 @@ public class Sorter
         {
             for (int x = 0; x < width; x++)
             {
-                double dx = x + 0.5 - cx;
-                double dy = y + 0.5 - cy;
-                double angle = Math.Atan2(dy, dx);
-                int bucket = (int)Math.Round(((angle + Math.PI) / (2 * Math.PI)) * (angleBuckets - 1));
-                double dist = dx * dx + dy * dy;
+                float dx = x + 0.5f - cx;
+                float dy = y + 0.5f - cy;
+                float angle = MathF.Atan2(dy, dx);
+                int bucket = (int)MathF.Round(((angle + MathF.PI) / (2f * MathF.PI)) * (angleBuckets - 1));
+                float dist = dx * dx + dy * dy;
                 buckets[bucket].Add((x, y, dist));
             }
         }
@@ -368,10 +368,10 @@ public class Sorter
             if (bucket.Count == 0) continue;
 
             bucket.Sort((a, b) => a.Dist.CompareTo(b.Dist));
-            var sequence = bucket.AsEnumerable().Reverse();
 
-            foreach (var point in sequence)
+            for (int j = bucket.Count - 1; j >= 0; j--)
             {
+                var point = bucket[j];
                 int maskIndex = (point.Y * width + point.X) * maskChannels;
                 bool insideMask = maskData[maskIndex] >= 128;
 
@@ -406,17 +406,18 @@ public class Sorter
         long sumY = 0;
         long count = 0;
 
+        int idx = 0;
         for (int y = 0; y < height; y++)
         {
-            int maskRowOffset = y * width * maskChannels;
             for (int x = 0; x < width; x++)
             {
-                if (maskData[maskRowOffset + x * maskChannels] >= 128)
+                if (maskData[idx] >= 128)
                 {
                     sumX += x;
                     sumY += y;
                     count++;
                 }
+                idx += maskChannels;
             }
         }
 
