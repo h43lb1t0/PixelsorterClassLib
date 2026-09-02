@@ -98,6 +98,23 @@ namespace Pixelsorter.Tests.SorterTests
             Assert.Equal(expectedData.ToArray<float>(), sortedImage.ToArray<float>());
         }
 
+        [Fact]
+        public void Sorter_SortArbitraryAngle_45Degrees_WithMask_SortsPixelsCorrectly()
+        {
+            var imgData = SorterTestHelpers.CreateUnsortedImageData();
+
+            var sortedImage = Sorter.SortImage(imgData, PixelsorterClassLib.Core.SortBy.Saturation(), SortDirections.ArbitraryAngle, CreateMask(), 45f);
+
+            var expectedData = np.array([
+                ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.Gray, ..SorterTestHelpers.MidSaturation,
+                ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.Gray,
+                ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.Gray, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.HighSaturation,
+                ..SorterTestHelpers.Gray, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.LowSaturation
+            ]).reshape(4, 4, 3);
+
+            Assert.Equal(expectedData.ToArray<float>(), sortedImage.ToArray<float>());
+        }
+
         private static NDArray CreateMask()
         {
             return np.array(new byte[] {
