@@ -142,17 +142,18 @@ public class Sorter
         sourceData.CopyTo(resultData.AsSpan());
 
         // Mask remains byte data since it evaluates thresholds (0-255)
-        byte[]? maskData = null;
+        ArraySlice<byte> maskData = default;
+        bool hasMask = mask is not null;
         int maskChannels = 4;
-        if (mask is not null)
+        if (hasMask)
         {
-            maskData = mask.ToArray<byte>();
+            maskData = mask!.Data<byte>();
             maskChannels = (int)mask.shape[2];
         }
 
         if (sortDirections == SortDirections.IntoMask)
         {
-            if (maskData is null)
+            if (!hasMask)
                 throw new ArgumentException("A mask is required for IntoMask sorting.", nameof(mask));
 
             ApplyRadialMaskSort(sourceData, resultData, width, height, channels, maskData, maskChannels, sortingFunction);
@@ -162,7 +163,6 @@ public class Sorter
             float actualAngle = angle >= 0f ? angle : MapDirectionToAngle(sortDirections);
             rays = GetBresenhamRays(width, height, actualAngle);
 
-            bool hasMask = maskData != null;
             int maxLineLength = width + height;
 
             Parallel.ForEach(
@@ -225,7 +225,7 @@ public class Sorter
 
                     while (true)
                     {
-                        bool insideMask = !hasMask || maskData![maskOffset] >= 128;
+                        bool insideMask = !hasMask || maskData[maskOffset] >= 128;
 
                         if (insideMask)
                         {
@@ -301,7 +301,7 @@ public class Sorter
     /// <summary>
     /// Sorts pixels within the masked region along radial lines pointing toward the mask centroid.
     /// </summary>
-    private static void ApplyRadialMaskSort(ArraySlice<float> sourceData, float[] resultData, int width, int height, int channels, byte[] maskData, int maskChannels, Func<Hsl, float> sortingFunction)
+    private static void ApplyRadialMaskSort(ArraySlice<float> sourceData, float[] resultData, int width, int height, int channels, ArraySlice<byte> maskData, int maskChannels, Func<Hsl, float> sortingFunction)
     {
         var (centerX, centerY) = GetMaskCentroid(maskData, width, height, maskChannels);
 
@@ -400,7 +400,7 @@ public class Sorter
     /// <summary>
     /// Computes the centroid of the masked area, falling back to the image center if the mask is empty.
     /// </summary>
-    private static (int X, int Y) GetMaskCentroid(byte[] maskData, int width, int height, int maskChannels)
+    private static (int X, int Y) GetMaskCentroid(ArraySlice<byte> maskData, int width, int height, int maskChannels)
     {
         long sumX = 0;
         long sumY = 0;
