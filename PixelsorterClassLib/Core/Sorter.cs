@@ -133,13 +133,14 @@ public class Sorter
         // HSL requires float precision (H: 0-360, S: 0-1, L: 0-1)
         // Data<T>() returns an ArraySlice<T> referencing unmanaged memory directly (zero-copy)
         var sourceData = imageData.Data<float>();
+        var halfSourceData = imageData.Data<Half>();
         int totalElements = (int)sourceData.Count;
-        var resultData = new float[totalElements];
+        var resultData = new Half[totalElements];
 
         List<((int, int) start, (int, int) end)> rays = [];
 
         // Unsorted pixels keep their original values — copy directly from unmanaged source
-        sourceData.CopyTo(resultData.AsSpan());
+        halfSourceData.CopyTo(resultData.AsSpan());
 
         // Mask remains byte data since it evaluates thresholds (0-255)
         ArraySlice<byte> maskData = default;
@@ -197,10 +198,10 @@ public class Sorter
                             int targetOffset = runOffsets[i];
                             int srcOffset = runPixels[i].SourceOffset;
 
-                            resultData[targetOffset] = sourceData[srcOffset];
-                            resultData[targetOffset + 1] = sourceData[srcOffset + 1];
-                            resultData[targetOffset + 2] = sourceData[srcOffset + 2];
-                            if (hasAlpha) resultData[targetOffset + 3] = sourceData[srcOffset + 3];
+                            resultData[targetOffset] = (Half)sourceData[srcOffset];
+                            resultData[targetOffset + 1] = (Half)sourceData[srcOffset + 1];
+                            resultData[targetOffset + 2] = (Half)sourceData[srcOffset + 2];
+                            if (hasAlpha) resultData[targetOffset + 3] = (Half)sourceData[srcOffset + 3];
                         }
 
                         runLength = 0;
@@ -301,7 +302,7 @@ public class Sorter
     /// <summary>
     /// Sorts pixels within the masked region along radial lines pointing toward the mask centroid.
     /// </summary>
-    private static void ApplyRadialMaskSort(ArraySlice<float> sourceData, float[] resultData, int width, int height, int channels, ArraySlice<byte> maskData, int maskChannels, Func<Hsl, float> sortingFunction)
+    private static void ApplyRadialMaskSort(ArraySlice<float> sourceData, Half[] resultData, int width, int height, int channels, ArraySlice<byte> maskData, int maskChannels, Func<Hsl, float> sortingFunction)
     {
         var (centerX, centerY) = GetMaskCentroid(maskData, width, height, maskChannels);
 
@@ -354,10 +355,10 @@ public class Sorter
                 int srcOffset = runPixels[i].SourceOffset;
 
                 // Read directly from sourceData using the sorted original offsets
-                resultData[targetOffset] = sourceData[srcOffset];
-                resultData[targetOffset + 1] = sourceData[srcOffset + 1];
-                resultData[targetOffset + 2] = sourceData[srcOffset + 2];
-                if (hasAlpha) resultData[targetOffset + 3] = sourceData[srcOffset + 3];
+                resultData[targetOffset] = (Half)sourceData[srcOffset];
+                resultData[targetOffset + 1] = (Half)sourceData[srcOffset + 1];
+                resultData[targetOffset + 2] = (Half)sourceData[srcOffset + 2];
+                if (hasAlpha) resultData[targetOffset + 3] = (Half)sourceData[srcOffset + 3];
             }
 
             runLength = 0;

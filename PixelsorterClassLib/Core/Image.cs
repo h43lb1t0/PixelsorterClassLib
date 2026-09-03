@@ -30,7 +30,7 @@ public class Image
         int width = image.Width;
 
         // Allocate flat byte array for direct access
-        float[] data = new float[height * width * 3];
+        Half[] data = new Half[height * width * 3];
 
         int index = 0;
 
@@ -46,9 +46,9 @@ public class Image
                     var rgb = new Rgb(pixel.R / 255f, pixel.G / 255f, pixel.B / 255f);
                     var hsl = ColorSpaceConverter.ToHsl(rgb);
 
-                    data[index++] = hsl.H; // Hue 0-360
-                    data[index++] = hsl.S; // Saturation 0-1
-                    data[index++] = hsl.L; // Lightness 0-1
+                    data[index++] = (Half)hsl.H; // Hue 0-360
+                    data[index++] = (Half)hsl.S; // Saturation 0-1
+                    data[index++] = (Half)hsl.L; // Lightness 0-1
                 }
             }
         });
@@ -65,7 +65,7 @@ public class Image
         int width = (int)shape[1];
         int channels = (int)shape[2];
 
-        var sourceData = data.ToArray<float>();
+        var sourceData = data.ToArray<Half>();
 
         var image = new SixLabors.ImageSharp.Image<Rgba32>(width, height);
 
@@ -87,9 +87,9 @@ public class Image
 
                     if (channels >= 3)
                     {
-                        float h = sourceData[pixelOffset];
-                        float s = sourceData[pixelOffset + 1];
-                        float l = sourceData[pixelOffset + 2];
+                        float h = (float)sourceData[pixelOffset];
+                        float s = (float)sourceData[pixelOffset + 1];
+                        float l = (float)sourceData[pixelOffset + 2];
 
                         var rgb = ColorSpaceConverter.ToRgb(new Hsl(h, s, l));
                         r = (byte)Math.Clamp(rgb.R * 255f, 0, 255);
@@ -98,12 +98,12 @@ public class Image
 
                         if (channels > 3)
                         {
-                            a = (byte)Math.Clamp(sourceData[pixelOffset + 3] * 255f, 0, 255);
+                            a = (byte)Math.Clamp((float)sourceData[pixelOffset + 3] * 255f, 0, 255);
                         }
                     }
                     else if (channels == 1)
                     {
-                        float gray = sourceData[pixelOffset];
+                        float gray = (float)sourceData[pixelOffset];
                         r = g = b = (byte)Math.Clamp(gray * 255f, 0, 255);
                     }
                     else
