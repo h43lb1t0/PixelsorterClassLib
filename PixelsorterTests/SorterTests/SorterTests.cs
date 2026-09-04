@@ -28,7 +28,7 @@ namespace Pixelsorter.Tests.SorterTests
                 ..SorterTestHelpers.Gray, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation
             ]).reshape(4, 4, 3);
 
-            Assert.Equal(expectedData.ToArray<float>(), sortedImage.ToArray<float>());
+            Assert.Equal(expectedData.ToArray<Half>(), sortedImage.ToArray<Half>());
         }
 
         [Fact]
@@ -45,7 +45,7 @@ namespace Pixelsorter.Tests.SorterTests
                 ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.Gray
             ]).reshape(4, 4, 3);
 
-            Assert.Equal(expectedData.ToArray<float>(), sortedImage.ToArray<float>());
+            Assert.Equal(expectedData.ToArray<Half>(), sortedImage.ToArray<Half>());
         }
 
         [Fact]
@@ -62,7 +62,7 @@ namespace Pixelsorter.Tests.SorterTests
                 ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.HighSaturation
             ]).reshape(4, 4, 3);
 
-            Assert.Equal(expectedData.ToArray<float>(), sortedImage.ToArray<float>());
+            Assert.Equal(expectedData.ToArray<Half>(), sortedImage.ToArray<Half>());
         }
 
         [Fact]
@@ -79,7 +79,7 @@ namespace Pixelsorter.Tests.SorterTests
                 ..SorterTestHelpers.Gray, ..SorterTestHelpers.Gray, ..SorterTestHelpers.Gray, ..SorterTestHelpers.Gray
             ]).reshape(4, 4, 3);
 
-            Assert.Equal(expectedData.ToArray<float>(), sortedImage.ToArray<float>());
+            Assert.Equal(expectedData.ToArray<Half>(), sortedImage.ToArray<Half>());
         }
 
         [Fact]
@@ -96,7 +96,7 @@ namespace Pixelsorter.Tests.SorterTests
                 ..SorterTestHelpers.Gray, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.HighSaturation
             ]).reshape(4, 4, 3);
 
-            Assert.Equal(expectedData.ToArray<float>(), sortedImage.ToArray<float>());
+            Assert.Equal(expectedData.ToArray<Half>(), sortedImage.ToArray<Half>());
         }
 
         [Fact]
@@ -113,7 +113,7 @@ namespace Pixelsorter.Tests.SorterTests
                 ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.LowSaturation
             ]).reshape(4, 4, 3);
 
-            Assert.Equal(expectedData.ToArray<float>(), sortedImage.ToArray<float>());
+            Assert.Equal(expectedData.ToArray<Half>(), sortedImage.ToArray<Half>());
         }
 
         [Fact]

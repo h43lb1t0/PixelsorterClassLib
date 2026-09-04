@@ -19,14 +19,14 @@ namespace Pixelsorter.Tests.SorterTests
                 ..SorterTestHelpers.Gray, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.LowSaturation
             ]).reshape(4, 4, 3);
 
-            Assert.Equal(expectedData.ToArray<float>(), sortedImage.ToArray<float>());
+            Assert.Equal(expectedData.ToArray<Half>(), sortedImage.ToArray<Half>());
         }
 
         [Fact]
         public void Sorter_SortIntoMask_WithMask_SortsPixelsAlongMaskRays()
         {
             var baseImageData = SorterTestHelpers.CreateUnsortedImageData();
-            var sourceData = baseImageData.ToArray<float>();
+            var sourceData = baseImageData.ToArray<Half>();
 
             SetPixel(sourceData, 1, 0, SorterTestHelpers.Gray);
             SetPixel(sourceData, 2, 0, SorterTestHelpers.HighSaturation);
@@ -44,7 +44,7 @@ namespace Pixelsorter.Tests.SorterTests
                 ..SorterTestHelpers.Gray, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.LowSaturation
             ]).reshape(4, 4, 3);
 
-            Assert.Equal(expectedData.ToArray<float>(), sortedImage.ToArray<float>());
+            Assert.Equal(expectedData.ToArray<Half>(), sortedImage.ToArray<Half>());
         }
 
         [Fact]
@@ -61,7 +61,7 @@ namespace Pixelsorter.Tests.SorterTests
                 ..SorterTestHelpers.Gray, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.LowSaturation
             ]).reshape(4, 4, 3);
 
-            Assert.Equal(expectedData.ToArray<float>(), sortedImage.ToArray<float>());
+            Assert.Equal(expectedData.ToArray<Half>(), sortedImage.ToArray<Half>());
         }
 
         [Fact]
@@ -78,7 +78,7 @@ namespace Pixelsorter.Tests.SorterTests
                 ..SorterTestHelpers.Gray, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.LowSaturation
             ]).reshape(4, 4, 3);
 
-            Assert.Equal(expectedData.ToArray<float>(), sortedImage.ToArray<float>());
+            Assert.Equal(expectedData.ToArray<Half>(), sortedImage.ToArray<Half>());
         }
 
         [Fact]
@@ -95,7 +95,7 @@ namespace Pixelsorter.Tests.SorterTests
                 ..SorterTestHelpers.Gray, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.LowSaturation
             ]).reshape(4, 4, 3);
 
-            Assert.Equal(expectedData.ToArray<float>(), sortedImage.ToArray<float>());
+            Assert.Equal(expectedData.ToArray<Half>(), sortedImage.ToArray<Half>());
         }
 
         [Fact]
@@ -112,7 +112,7 @@ namespace Pixelsorter.Tests.SorterTests
                 ..SorterTestHelpers.Gray, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.LowSaturation
             ]).reshape(4, 4, 3);
 
-            Assert.Equal(expectedData.ToArray<float>(), sortedImage.ToArray<float>());
+            Assert.Equal(expectedData.ToArray<Half>(), sortedImage.ToArray<Half>());
         }
 
         private static NDArray CreateMask()
@@ -125,7 +125,7 @@ namespace Pixelsorter.Tests.SorterTests
             }).reshape(4, 4, 1);
         }
 
-        private static void SetPixel(float[] data, int x, int y, float[] pixel)
+        private static void SetPixel(Half[] data, int x, int y, Half[] pixel)
         {
             Array.Copy(pixel, 0, data, (y * 4 + x) * 3, 3);
         }

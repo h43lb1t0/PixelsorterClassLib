@@ -10,7 +10,7 @@ namespace Pixelsorter.Tests.ImageTests
         public void NdarrayToImageData_ConvertsColorImageCorrectly()
         {
             // 3 channels (HSL) - pure red and pure green
-            var data = new float[] { 0f, 1f, 0.5f, 120f, 1f, 0.5f }; // 1x2 image
+            var data = new Half[] { (Half)0f, (Half)1f, (Half)0.5f, (Half)120f, (Half)1f, (Half)0.5f }; // 1x2 image
             var ndArray = np.array(data).reshape(1, 2, 3);
 
             using var image = Image.NdarrayToImgData(ndArray);
@@ -26,7 +26,7 @@ namespace Pixelsorter.Tests.ImageTests
         public void NdarrayToImageData_ConvertsGrayscaleImageCorrectly()
         {
             // 1 channel (Grayscale) - float values 0-1
-            var data = new float[] { 1.0f, 0.0f }; // 1x2 image: white and black
+            var data = new Half[] { (Half)1.0f, (Half)0.0f }; // 1x2 image: white and black
             var ndArray = np.array(data).reshape(1, 2, 1);
 
             using var image = Image.NdarrayToImgData(ndArray);
@@ -42,7 +42,7 @@ namespace Pixelsorter.Tests.ImageTests
         public void NdarrayToImageData_ConvertsTransparentImageCorrectly()
         {
             // 4 channels (HSL + Alpha) - pure red with full alpha, pure green with zero alpha
-            var data = new float[] { 0f, 1f, 0.5f, 1f, 120f, 1f, 0.5f, 0f }; // 1x2 image
+            var data = new Half[] { (Half)0f, (Half)1f, (Half)0.5f, (Half)1f, (Half)120f, (Half)1f, (Half)0.5f, (Half)0f }; // 1x2 image
             var ndArray = np.array(data).reshape(1, 2, 4);
 
             using var image = Image.NdarrayToImgData(ndArray);
@@ -57,7 +57,7 @@ namespace Pixelsorter.Tests.ImageTests
         [Fact]
         public void NdarrayToImageData_ThrowsOnInvalidChannelCount()
         {
-            var data = new float[] { 1f, 0.5f }; // 1x1 image, 2 channels
+            var data = new Half[] { (Half)1f, (Half)0.5f }; // 1x1 image, 2 channels
             var ndArray = np.array(data).reshape(1, 1, 2);
 
             Assert.Throws<InvalidOperationException>(() => Image.NdarrayToImgData(ndArray));

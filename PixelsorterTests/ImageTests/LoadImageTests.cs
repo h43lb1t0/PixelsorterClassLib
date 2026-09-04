@@ -134,7 +134,7 @@ namespace Pixelsorter.Tests.ImageTests
                 $"Raw: {rawWidth}x{rawHeight}, Oriented: {orientedWidth}x{orientedHeight}");
 
             // Verify pixel data is consistent with dimensions
-            var pixelData = image.ToArray<float>();
+            var pixelData = image.ToArray<Half>();
             Assert.True(pixelData.Length == orientedHeight * orientedWidth * channels, 
                 $"Pixel data length should match height*width*channels: {pixelData.Length} vs {orientedHeight * orientedWidth * channels}");
 
@@ -142,11 +142,11 @@ namespace Pixelsorter.Tests.ImageTests
             for (int i = 0; i < pixelData.Length; i += 3)
             {
                 // Hue should be 0-360
-                Assert.InRange(pixelData[i], 0f, 360f);
+                Assert.InRange(pixelData[i], (Half)0f, (Half)360f);
                 // Saturation should be 0-1
-                Assert.InRange(pixelData[i + 1], 0f, 1f);
+                Assert.InRange(pixelData[i + 1], (Half)0f, (Half)1f);
                 // Lightness should be 0-1
-                Assert.InRange(pixelData[i + 2], 0f, 1f);
+                Assert.InRange(pixelData[i + 2], (Half)0f, (Half)1f);
             }
         }
     }
