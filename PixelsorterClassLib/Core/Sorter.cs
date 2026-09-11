@@ -142,13 +142,17 @@ public class Sorter
         // HSL requires float precision (H: 0-360, S: 0-1, L: 0-1)
         // Data<T>() returns an ArraySlice<T> referencing unmanaged memory directly (zero-copy)
         var sourceData = imageData.Data<float>();
-        int totalElements = (int)sourceData.Count;
-        var resultData = GC.AllocateUninitializedArray<float>(totalElements);
+
+        // Allocate result directly in unmanaged memory — avoids both the managed float[]
+        // allocation and the copy that NDArray(float[], Shape) would do internally
+        var resultShape = new Shape(height, width, channels);
+        var resultNdArray = new NDArray(typeof(float), resultShape);
+        var resultData = resultNdArray.Data<float>();
 
         ((int, int) start, (int, int) end)[] rays = [];
 
-        // Unsorted pixels keep their original values — copy directly from unmanaged source
-        sourceData.CopyTo(resultData.AsSpan());
+        // Unsorted pixels keep their original values — copy unmanaged to unmanaged
+        sourceData.CopyTo(resultData);
 
         // Mask remains byte data since it evaluates thresholds (0-255)
         ArraySlice<byte> maskData = default;
@@ -165,7 +169,7 @@ public class Sorter
             if (!hasMask)
                 throw new ArgumentException("A mask is required for IntoMask sorting.", nameof(mask));
 
-            ApplyRadialMaskSort(sourceData, resultData, width, height, channels, maskData, maskChannels, sortingFunction);
+            ApplyRadialMaskSort(sourceData, resultData, width, height, channels, hasAlpha, maskData, maskChannels, sortingFunction);
         }
         else
         {
@@ -209,7 +213,8 @@ public class Sorter
                             resultData[targetOffset] = sourceData[srcOffset];
                             resultData[targetOffset + 1] = sourceData[srcOffset + 1];
                             resultData[targetOffset + 2] = sourceData[srcOffset + 2];
-                            if (hasAlpha) resultData[targetOffset + 3] = sourceData[srcOffset + 3];
+                            if (hasAlpha)
+                                resultData[targetOffset + 3] = sourceData[srcOffset + 3];
                         }
 
                         runLength = 0;
@@ -281,8 +286,8 @@ public class Sorter
             );
         }
 
-        // Wrap resultData directly — no copy, NDArray references the existing array
-        return new NDArray(resultData, new Shape(height, width, channels));
+        // Result NDArray was allocated directly in unmanaged memory — just return it
+        return resultNdArray;
     }
 
 
@@ -310,7 +315,7 @@ public class Sorter
     /// <summary>
     /// Sorts pixels within the masked region along radial lines pointing toward the mask centroid.
     /// </summary>
-    private static void ApplyRadialMaskSort(ArraySlice<float> sourceData, float[] resultData, int width, int height, int channels, ArraySlice<byte> maskData, int maskChannels, Func<Hsl, float> sortingFunction)
+    private static void ApplyRadialMaskSort(ArraySlice<float> sourceData, ArraySlice<float> resultData, int width, int height, int channels, bool hasAlpha, ArraySlice<byte> maskData, int maskChannels, Func<Hsl, float> sortingFunction)
     {
         var (centerX, centerY) = GetMaskCentroid(maskData, width, height, maskChannels);
 
@@ -324,8 +329,7 @@ public class Sorter
             buckets[i] = new List<(int X, int Y, float Dist)>();
         }
 
-        // Pre-calculate alpha requirement
-        bool hasAlpha = channels > 3;
+        // Alpha flag is passed in from caller
 
         for (int y = 0; y < height; y++)
         {
