@@ -134,7 +134,7 @@ public class Sorter
         // Data<T>() returns an ArraySlice<T> referencing unmanaged memory directly (zero-copy)
         var sourceData = imageData.Data<float>();
         int totalElements = (int)sourceData.Count;
-        var resultData = new float[totalElements];
+        var resultData = GC.AllocateUninitializedArray<float>(totalElements);
 
         List<((int, int) start, (int, int) end)> rays = [];
 
