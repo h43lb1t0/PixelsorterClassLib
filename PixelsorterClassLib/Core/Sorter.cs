@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using NumSharp;
 using NumSharp.Backends.Unmanaged;
 using SixLabors.ImageSharp.ColorSpaces;
@@ -13,6 +14,8 @@ namespace PixelsorterClassLib.Core;
 /// ordering is required.</remarks>
 public class Sorter
 {
+    private static readonly ConcurrentDictionary<(int Width, int Height, float Angle), ((int, int) start, (int, int) end)[]> _rayCache = new();
+
     public Sorter() { }
 
     /// <summary>
@@ -22,8 +25,12 @@ public class Sorter
     /// <param name="height">The height of the image.</param>
     /// <param name="angle">The angle in degrees to extend the rays.</param>
     /// <returns>A list of rays represented as tuples of start and end points.</returns>
-    private static List<((int X, int Y) start, (int X, int Y) end)> GetBresenhamRays(int width, int height, float angle)
+    private static ((int, int) start, (int, int) end)[] GetBresenhamRays(int width, int height, float angle)
     {
+        var key = (width, height, angle);
+        if (_rayCache.TryGetValue(key, out var cached))
+            return cached;
+
         var rays = new List<((int X, int Y) start, (int X, int Y) end)>();
 
         // Normalize angle to 0-360 degrees
@@ -88,7 +95,9 @@ public class Sorter
             for (int x = 1; x < width; x++) rays.Add(((x, height - 1), GetEndPoint(x, height - 1)));
         }
 
-        return rays;
+        var result = rays.ToArray();
+        _rayCache.TryAdd(key, result);
+        return result;
     }
 
     /// <summary>
@@ -136,7 +145,7 @@ public class Sorter
         int totalElements = (int)sourceData.Count;
         var resultData = GC.AllocateUninitializedArray<float>(totalElements);
 
-        List<((int, int) start, (int, int) end)> rays = [];
+        ((int, int) start, (int, int) end)[] rays = [];
 
         // Unsorted pixels keep their original values — copy directly from unmanaged source
         sourceData.CopyTo(resultData.AsSpan());

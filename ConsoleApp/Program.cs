@@ -37,7 +37,15 @@ internal class Program
         
         timer.Stop();
 
-        Console.WriteLine($"Sorting completed in {timer.ElapsedMilliseconds} ms");
+        var timer2 = System.Diagnostics.Stopwatch.StartNew();
+
+        var voo = Sorter.SortImage(img, SortBy.Lightness(), SortDirections.ArbitraryAngle, j, 45f);
+
+        timer2.Stop();
+
+
+        Console.WriteLine($"Sorting 1 completed in {timer.ElapsedMilliseconds} ms");
+        Console.WriteLine($"Sorting 2 completed in {timer2.ElapsedMilliseconds} ms");
 
 
 
