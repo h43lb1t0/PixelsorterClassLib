@@ -139,7 +139,6 @@ public class Sorter
         int channels = (int)shape[2];
         bool hasAlpha = channels > 3;
 
-        // HSL requires float precision (H: 0-360, S: 0-1, L: 0-1)
         // Data<T>() returns an ArraySlice<T> referencing unmanaged memory directly (zero-copy)
         var sourceData = imageData.Data<float>();
 
@@ -149,18 +148,31 @@ public class Sorter
         var resultNdArray = new NDArray(typeof(float), resultShape);
         var resultData = resultNdArray.Data<float>();
 
+        // Extract raw addresses — all hot-path access goes through float*/byte* pointers
+        // instead of ArraySlice<T> indexers (critical for Mono/Android performance where
+        // the indexer overhead is 5-10x worse than on CoreCLR)
+        nint srcAddr;
+        nint dstAddr;
+        unsafe
+        {
+            srcAddr = (nint)sourceData.Address;
+            dstAddr = (nint)resultData.Address;
+
+            // Bulk copy via raw pointers — unsorted pixels keep their original values
+            long byteCount = (long)sourceData.Count * sizeof(float);
+            Buffer.MemoryCopy((void*)srcAddr, (void*)dstAddr, byteCount, byteCount);
+        }
+
         ((int, int) start, (int, int) end)[] rays = [];
 
-        // Unsorted pixels keep their original values — copy unmanaged to unmanaged
-        sourceData.CopyTo(resultData);
-
-        // Mask remains byte data since it evaluates thresholds (0-255)
-        ArraySlice<byte> maskData = default;
+        // Mask setup — extract address for pointer access in hot loops
+        nint maskAddr = 0;
         bool hasMask = mask is not null;
         int maskChannels = 4;
         if (hasMask)
         {
-            maskData = mask!.Data<byte>();
+            var maskSlice = mask!.Data<byte>();
+            unsafe { maskAddr = (nint)maskSlice.Address; }
             maskChannels = (int)mask.shape[2];
         }
 
@@ -169,7 +181,7 @@ public class Sorter
             if (!hasMask)
                 throw new ArgumentException("A mask is required for IntoMask sorting.", nameof(mask));
 
-            ApplyRadialMaskSort(sourceData, resultData, width, height, channels, hasAlpha, maskData, maskChannels, sortingFunction);
+            ApplyRadialMaskSort(srcAddr, dstAddr, width, height, channels, hasAlpha, maskAddr, maskChannels, sortingFunction);
         }
         else
         {
@@ -190,94 +202,76 @@ public class Sorter
                 // 2. LOOP BODY: Runs for every ray, recycling the thread's buffers.
                 (ray, loopState, threadBuffers) =>
                 {
-                    // Grab the recycled arrays out of our thread tuple
                     var runOffsets = threadBuffers.Offsets;
                     var runPixels = threadBuffers.Pixels;
                     int runLength = 0;
 
-                    void FlushRun()
+                    unsafe
                     {
-                        if (runLength <= 1)
+                        // Raw pointer access bypasses ArraySlice indexer overhead
+                        // (bounds checks + indirection per access) — critical for ARM/Mono
+                        float* srcPtr = (float*)srcAddr;
+                        float* dstPtr = (float*)dstAddr;
+                        byte* maskPtr = (byte*)maskAddr;
+
+                        int x0 = ray.start.Item1;
+                        int y0 = ray.start.Item2;
+                        int x1 = ray.end.Item1;
+                        int y1 = ray.end.Item2;
+
+                        int dx = Math.Abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+                        int dy = -Math.Abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+                        int err = dx + dy, e2;
+
+                        int pixelOffset = (y0 * width + x0) * channels;
+                        int maskOffset = (y0 * width + x0) * maskChannels;
+
+                        int sxPixelStep = sx * channels;
+                        int syPixelStep = sy * width * channels;
+                        int sxMaskStep = sx * maskChannels;
+                        int syMaskStep = sy * width * maskChannels;
+
+                        while (true)
                         {
-                            runLength = 0;
-                            return;
+                            bool insideMask = !hasMask || maskPtr[maskOffset] >= 128;
+
+                            if (insideMask)
+                            {
+                                float h = srcPtr[pixelOffset];
+                                float s = srcPtr[pixelOffset + 1];
+                                float l = srcPtr[pixelOffset + 2];
+
+                                runOffsets[runLength] = pixelOffset;
+                                runPixels[runLength] = new PixelSortData(pixelOffset, sortingFunction(new Hsl(h, s, l)));
+                                runLength++;
+                            }
+                            else
+                            {
+                                FlushSortRun(srcPtr, dstPtr, runOffsets, runPixels, ref runLength, hasAlpha);
+                            }
+
+                            if (x0 == x1 && y0 == y1) break;
+
+                            e2 = 2 * err;
+                            if (e2 >= dy)
+                            {
+                                err += dy;
+                                x0 += sx;
+                                pixelOffset += sxPixelStep;
+                                maskOffset += sxMaskStep;
+                            }
+                            if (e2 <= dx)
+                            {
+                                err += dx;
+                                y0 += sy;
+                                pixelOffset += syPixelStep;
+                                maskOffset += syMaskStep;
+                            }
                         }
 
-                        runPixels.AsSpan(0, runLength).Sort();
-
-                        for (int i = 0; i < runLength; i++)
-                        {
-                            int targetOffset = runOffsets[i];
-                            int srcOffset = runPixels[i].SourceOffset;
-
-                            resultData[targetOffset] = sourceData[srcOffset];
-                            resultData[targetOffset + 1] = sourceData[srcOffset + 1];
-                            resultData[targetOffset + 2] = sourceData[srcOffset + 2];
-                            if (hasAlpha)
-                                resultData[targetOffset + 3] = sourceData[srcOffset + 3];
-                        }
-
-                        runLength = 0;
+                        FlushSortRun(srcPtr, dstPtr, runOffsets, runPixels, ref runLength, hasAlpha);
                     }
 
-                    int x0 = ray.start.Item1;
-                    int y0 = ray.start.Item2;
-                    int x1 = ray.end.Item1;
-                    int y1 = ray.end.Item2;
-
-                    int dx = Math.Abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
-                    int dy = -Math.Abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
-                    int err = dx + dy, e2;
-
-                    int pixelOffset = (y0 * width + x0) * channels;
-                    int maskOffset = (y0 * width + x0) * maskChannels;
-
-                    int sxPixelStep = sx * channels;
-                    int syPixelStep = sy * width * channels;
-                    int sxMaskStep = sx * maskChannels;
-                    int syMaskStep = sy * width * maskChannels;
-
-                    while (true)
-                    {
-                        bool insideMask = !hasMask || maskData[maskOffset] >= 128;
-
-                        if (insideMask)
-                        {
-                            float h = sourceData[pixelOffset];
-                            float s = sourceData[pixelOffset + 1];
-                            float l = sourceData[pixelOffset + 2];
-
-                            runOffsets[runLength] = pixelOffset;
-                            runPixels[runLength] = new PixelSortData(pixelOffset, sortingFunction(new Hsl(h, s, l)));
-                            runLength++;
-                        }
-                        else
-                        {
-                            FlushRun();
-                        }
-
-                        if (x0 == x1 && y0 == y1) break;
-
-                        e2 = 2 * err;
-                        if (e2 >= dy)
-                        {
-                            err += dy;
-                            x0 += sx;
-                            pixelOffset += sxPixelStep;
-                            maskOffset += sxMaskStep;
-                        }
-                        if (e2 <= dx)
-                        {
-                            err += dx;
-                            y0 += sy;
-                            pixelOffset += syPixelStep;
-                            maskOffset += syMaskStep;
-                        }
-                    }
-
-                    FlushRun();
-
-                    // Return the recycled buffers to be used by the next ray on this thread!
                     return threadBuffers;
                 },
 
@@ -313,11 +307,43 @@ public class Sorter
     }
 
     /// <summary>
+    /// Writes sorted pixel data back to the destination buffer using raw pointers.
+    /// Shared by both the ray-based and radial mask sorting paths.
+    /// </summary>
+    private static unsafe void FlushSortRun(
+        float* srcPtr, float* dstPtr,
+        int[] runOffsets, PixelSortData[] runPixels,
+        ref int runLength, bool hasAlpha)
+    {
+        if (runLength <= 1)
+        {
+            runLength = 0;
+            return;
+        }
+
+        runPixels.AsSpan(0, runLength).Sort();
+
+        for (int i = 0; i < runLength; i++)
+        {
+            int targetOffset = runOffsets[i];
+            int srcOffset = runPixels[i].SourceOffset;
+
+            dstPtr[targetOffset] = srcPtr[srcOffset];
+            dstPtr[targetOffset + 1] = srcPtr[srcOffset + 1];
+            dstPtr[targetOffset + 2] = srcPtr[srcOffset + 2];
+            if (hasAlpha)
+                dstPtr[targetOffset + 3] = srcPtr[srcOffset + 3];
+        }
+
+        runLength = 0;
+    }
+
+    /// <summary>
     /// Sorts pixels within the masked region along radial lines pointing toward the mask centroid.
     /// </summary>
-    private static void ApplyRadialMaskSort(ArraySlice<float> sourceData, ArraySlice<float> resultData, int width, int height, int channels, bool hasAlpha, ArraySlice<byte> maskData, int maskChannels, Func<Hsl, float> sortingFunction)
+    private static void ApplyRadialMaskSort(nint srcAddr, nint dstAddr, int width, int height, int channels, bool hasAlpha, nint maskAddr, int maskChannels, Func<Hsl, float> sortingFunction)
     {
-        var (centerX, centerY) = GetMaskCentroid(maskData, width, height, maskChannels);
+        var (centerX, centerY) = GetMaskCentroid(maskAddr, width, height, maskChannels);
 
         int angleBuckets = Math.Max(360, Math.Max(width, height));
         var buckets = new List<(int X, int Y, float Dist)>[angleBuckets];
@@ -328,8 +354,6 @@ public class Sorter
         {
             buckets[i] = new List<(int X, int Y, float Dist)>();
         }
-
-        // Alpha flag is passed in from caller
 
         for (int y = 0; y < height; y++)
         {
@@ -344,87 +368,68 @@ public class Sorter
             }
         }
 
-        // OPTIMIZATION: Use pre-allocated arrays instead of List<T> to avoid GC allocations
-        int maxLineLength = width + height; // Safe upper bound for any radial line
+        // Pre-allocated arrays for run sorting
+        int maxLineLength = width + height;
         var runOffsets = new int[maxLineLength];
         var runPixels = new PixelSortData[maxLineLength];
         int runLength = 0;
 
-        void FlushRun()
+        unsafe
         {
-            if (runLength <= 1)
+            float* srcPtr = (float*)srcAddr;
+            float* dstPtr = (float*)dstAddr;
+            byte* maskPtr = (byte*)maskAddr;
+
+            foreach (var bucket in buckets)
             {
-                runLength = 0;
-                return;
-            }
+                if (bucket.Count == 0) continue;
 
-            // OPTIMIZATION: Span sort for faster execution
-            runPixels.AsSpan(0, runLength).Sort();
+                bucket.Sort((a, b) => a.Dist.CompareTo(b.Dist));
 
-            for (int i = 0; i < runLength; i++)
-            {
-                int targetOffset = runOffsets[i];
-                int srcOffset = runPixels[i].SourceOffset;
-
-                // Read directly from sourceData using the sorted original offsets
-                resultData[targetOffset] = sourceData[srcOffset];
-                resultData[targetOffset + 1] = sourceData[srcOffset + 1];
-                resultData[targetOffset + 2] = sourceData[srcOffset + 2];
-                if (hasAlpha) resultData[targetOffset + 3] = sourceData[srcOffset + 3];
-            }
-
-            runLength = 0;
-        }
-
-        foreach (var bucket in buckets)
-        {
-            if (bucket.Count == 0) continue;
-
-            bucket.Sort((a, b) => a.Dist.CompareTo(b.Dist));
-
-            for (int j = bucket.Count - 1; j >= 0; j--)
-            {
-                var point = bucket[j];
-                int maskIndex = (point.Y * width + point.X) * maskChannels;
-                bool insideMask = maskData[maskIndex] >= 128;
-
-                if (insideMask)
+                for (int j = bucket.Count - 1; j >= 0; j--)
                 {
-                    int pixelOffset = (point.Y * width + point.X) * channels;
-                    float h = sourceData[pixelOffset];
-                    float s = sourceData[pixelOffset + 1];
-                    float l = sourceData[pixelOffset + 2];
+                    var point = bucket[j];
+                    int maskIndex = (point.Y * width + point.X) * maskChannels;
+                    bool insideMask = maskPtr[maskIndex] >= 128;
 
-                    // Use the diet struct!
-                    runOffsets[runLength] = pixelOffset;
-                    runPixels[runLength] = new PixelSortData(pixelOffset, sortingFunction(new Hsl(h, s, l)));
-                    runLength++;
+                    if (insideMask)
+                    {
+                        int pixelOffset = (point.Y * width + point.X) * channels;
+                        float h = srcPtr[pixelOffset];
+                        float s = srcPtr[pixelOffset + 1];
+                        float l = srcPtr[pixelOffset + 2];
+
+                        runOffsets[runLength] = pixelOffset;
+                        runPixels[runLength] = new PixelSortData(pixelOffset, sortingFunction(new Hsl(h, s, l)));
+                        runLength++;
+                    }
+                    else
+                    {
+                        FlushSortRun(srcPtr, dstPtr, runOffsets, runPixels, ref runLength, hasAlpha);
+                    }
                 }
-                else
-                {
-                    FlushRun();
-                }
+
+                FlushSortRun(srcPtr, dstPtr, runOffsets, runPixels, ref runLength, hasAlpha);
             }
-
-            FlushRun();
         }
     }
 
     /// <summary>
     /// Computes the centroid of the masked area, falling back to the image center if the mask is empty.
     /// </summary>
-    private static (int X, int Y) GetMaskCentroid(ArraySlice<byte> maskData, int width, int height, int maskChannels)
+    private static unsafe (int X, int Y) GetMaskCentroid(nint maskAddr, int width, int height, int maskChannels)
     {
         long sumX = 0;
         long sumY = 0;
         long count = 0;
 
+        byte* maskPtr = (byte*)maskAddr;
         int idx = 0;
         for (int y = 0; y < height; y++)
         {
             for (int x = 0; x < width; x++)
             {
-                if (maskData[idx] >= 128)
+                if (maskPtr[idx] >= 128)
                 {
                     sumX += x;
                     sumY += y;
