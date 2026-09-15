@@ -1,7 +1,6 @@
-using System.Collections.Concurrent;
 using NumSharp;
-using NumSharp.Backends.Unmanaged;
 using SixLabors.ImageSharp.ColorSpaces;
+using System.Collections.Concurrent;
 
 namespace PixelsorterClassLib.Core;
 
@@ -163,7 +162,6 @@ public class Sorter
             Buffer.MemoryCopy((void*)srcAddr, (void*)dstAddr, byteCount, byteCount);
         }
 
-        ((int, int) start, (int, int) end)[] rays = [];
 
         // Mask setup — extract address for pointer access in hot loops
         nint maskAddr = 0;
@@ -186,7 +184,7 @@ public class Sorter
         else
         {
             float actualAngle = angle >= 0f ? angle : MapDirectionToAngle(sortDirections);
-            rays = GetBresenhamRays(width, height, actualAngle);
+            ((int, int) start, (int, int) end)[] rays = GetBresenhamRays(width, height, actualAngle);
 
             int maxLineLength = width + height;
 
@@ -289,10 +287,10 @@ public class Sorter
     /// <summary>
     /// Struct to hold pixel data and sort value for efficient sorting
     /// </summary>
-    private struct PixelSortData : IComparable<PixelSortData>
+    private readonly struct PixelSortData : IComparable<PixelSortData>
     {
-        public int SourceOffset;
-        public float SortValue;
+        public readonly int SourceOffset;
+        public readonly float SortValue;
 
         public PixelSortData(int sourceOffset, float sortValue)
         {
