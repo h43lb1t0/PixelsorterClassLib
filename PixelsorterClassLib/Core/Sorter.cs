@@ -124,7 +124,7 @@ public class Sorter
     /// <param name="sortingFunction">Function that extracts a comparable value from an HSL pixel</param>
     /// <param name="sortDirections">Direction in which to sort the pixels (e.g., left-to-right, right-to-left)</param>
     /// <param name="mask">Optional 3D NumSharp array representing a binary mask to define sortable segments</param>
-    /// <param name="angle">The angle at which to sort the pixels (in degrees). This parameter is optional and defaults to -1, which indicates that the angle should be determined based on the sortDirections parameter.</param>
+    /// <param name="angle">The angle at which to sort the pixels (in degrees). This parameter is optional and defaults to -1, which indicates that the angle should be determined based on the sortDirections parameter. Will be ignored if sortDirections is not SortDirections.ArbitraryAngle.</param>
     /// <returns>Sorted image as a 3D NumSharp array</returns>
     public static NDArray SortImage(NDArray imageData, Func<Hsl, float> sortingFunction, SortDirections sortDirections, NDArray? mask = null, float angle = -1f)
     {
