@@ -183,7 +183,7 @@ public class Sorter
         }
         else
         {
-            float actualAngle = angle >= 0f ? angle : MapDirectionToAngle(sortDirections);
+            float actualAngle = sortDirections == SortDirections.ArbitraryAngle ? angle : MapDirectionToAngle(sortDirections);
             ((int, int) start, (int, int) end)[] rays = GetBresenhamRays(width, height, actualAngle);
 
             int maxLineLength = width + height;
