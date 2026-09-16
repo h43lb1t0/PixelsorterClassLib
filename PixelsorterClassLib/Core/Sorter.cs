@@ -109,8 +109,8 @@ public class Sorter
     {
         return direction switch
         {
-            SortDirections.RowLeftToRight => 0f,
-            SortDirections.RowRightToLeft => 180f,
+            SortDirections.RowLeftToRight => 180f,
+            SortDirections.RowRightToLeft => 0f,
             SortDirections.ColumnTopToBottom => 90f,
             SortDirections.ColumnBottomToTop => 270f,
             _ => throw new ArgumentException("Invalid sort direction for angle mapping.", nameof(direction)),
