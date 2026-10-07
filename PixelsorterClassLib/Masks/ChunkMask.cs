@@ -2,11 +2,7 @@
 using PixelsorterClassLib.Core;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
-using System;
-using System.Collections.Generic;
-using System.Numerics;
 using SixLabors.ImageSharp.Processing;
-using System.Text;
 
 namespace PixelsorterClassLib.Masks
 {
