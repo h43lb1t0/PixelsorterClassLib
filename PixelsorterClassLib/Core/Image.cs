@@ -1,9 +1,9 @@
 ﻿using NumSharp;
 using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.ColorSpaces;
-using SixLabors.ImageSharp.ColorSpaces.Conversion;
+using SixLabors.ImageSharp.ColorProfiles;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
+
 
 namespace PixelsorterClassLib.Core;
 
@@ -26,13 +26,16 @@ public class Image
     {
         using var image = SixLabors.ImageSharp.Image.Load<Rgb24>(path);
         image.Mutate(x => x.AutoOrient());
+
         int height = image.Height;
         int width = image.Width;
 
-        // Allocate flat byte array for direct access
         float[] data = new float[height * width * 3];
-
         int index = 0;
+
+        var converter = new ColorProfileConverter();
+        var rgbRow = new Rgb[width];
+        var hslRow = new Hsl[width];
 
         image.ProcessPixelRows(accessor =>
         {
@@ -42,18 +45,22 @@ public class Image
 
                 for (int x = 0; x < row.Length; x++)
                 {
-                    var pixel = row[x];
-                    var rgb = new Rgb(pixel.R / 255f, pixel.G / 255f, pixel.B / 255f);
-                    var hsl = ColorSpaceConverter.ToHsl(rgb);
+                    Rgb24 p = row[x];
+                    rgbRow[x] = new Rgb(p.R / 255f, p.G / 255f, p.B / 255f);
+                }
 
-                    data[index++] = hsl.H; // Hue 0-360
-                    data[index++] = hsl.S; // Saturation 0-1
-                    data[index++] = hsl.L; // Lightness 0-1
+                // Convert the whole row in one call
+                converter.Convert<Rgb, Hsl>(rgbRow, hslRow);
+
+                for (int x = 0; x < hslRow.Length; x++)
+                {
+                    data[index++] = hslRow[x].H; // Hue 0-360
+                    data[index++] = hslRow[x].S; // Saturation 0-1
+                    data[index++] = hslRow[x].L; // Lightness 0-1
                 }
             }
         });
 
-        // Create NDArray from byte array and reshape to 3D
         return np.array(data).reshape(new Shape(height, width, 3));
     }
 
@@ -65,53 +72,58 @@ public class Image
         int width = (int)shape[1];
         int channels = (int)shape[2];
 
+        if (channels != 1 && channels < 3)
+            throw new InvalidOperationException($"Unsupported channel count: {channels}");
+
         var sourceData = data.ToArray<float>();
 
-        var image = new SixLabors.ImageSharp.Image<Rgba32>(width, height);
+        var image = new Image<Rgba32>(width, height);
+
+        var converter = new ColorProfileConverter();
+        var hslRow = new Hsl[width];
+        var rgbRow = new Rgb[width];
 
         image.ProcessPixelRows(accessor =>
         {
             for (int y = 0; y < height; y++)
             {
-                var rowSpan = accessor.GetRowSpan(y);
+                Span<Rgba32> rowSpan = accessor.GetRowSpan(y);
                 int rowOffset = y * width * channels;
 
-                for (int x = 0; x < width; x++)
+                if (channels >= 3)
                 {
-                    int pixelOffset = rowOffset + x * channels;
-
-                    byte r;
-                    byte g;
-                    byte b;
-                    byte a = 255;
-
-                    if (channels >= 3)
+                    // Gather the row's HSL values, then convert them in one call
+                    for (int x = 0; x < width; x++)
                     {
-                        float h = sourceData[pixelOffset];
-                        float s = sourceData[pixelOffset + 1];
-                        float l = sourceData[pixelOffset + 2];
+                        int o = rowOffset + x * channels;
+                        hslRow[x] = new Hsl(sourceData[o], sourceData[o + 1], sourceData[o + 2]);
+                    }
 
-                        var rgb = ColorSpaceConverter.ToRgb(new Hsl(h, s, l));
-                        r = (byte)Math.Clamp(rgb.R * 255f, 0, 255);
-                        g = (byte)Math.Clamp(rgb.G * 255f, 0, 255);
-                        b = (byte)Math.Clamp(rgb.B * 255f, 0, 255);
+                    converter.Convert<Hsl, Rgb>(hslRow, rgbRow);
+
+                    for (int x = 0; x < width; x++)
+                    {
+                        byte r = (byte)Math.Clamp(rgbRow[x].R * 255f, 0, 255);
+                        byte g = (byte)Math.Clamp(rgbRow[x].G * 255f, 0, 255);
+                        byte b = (byte)Math.Clamp(rgbRow[x].B * 255f, 0, 255);
+                        byte a = 255;
 
                         if (channels > 3)
                         {
-                            a = (byte)Math.Clamp(sourceData[pixelOffset + 3] * 255f, 0, 255);
+                            int o = rowOffset + x * channels;
+                            a = (byte)Math.Clamp(sourceData[o + 3] * 255f, 0, 255);
                         }
-                    }
-                    else if (channels == 1)
-                    {
-                        float gray = sourceData[pixelOffset];
-                        r = g = b = (byte)Math.Clamp(gray * 255f, 0, 255);
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException($"Unsupported channel count: {channels}");
-                    }
 
-                    rowSpan[x] = new Rgba32(r, g, b, a);
+                        rowSpan[x] = new Rgba32(r, g, b, a);
+                    }
+                }
+                else // channels == 1
+                {
+                    for (int x = 0; x < width; x++)
+                    {
+                        byte v = (byte)Math.Clamp(sourceData[rowOffset + x] * 255f, 0, 255);
+                        rowSpan[x] = new Rgba32(v, v, v, 255);
+                    }
                 }
             }
         });
