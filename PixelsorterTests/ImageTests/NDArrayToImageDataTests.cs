@@ -1,7 +1,6 @@
 using NumSharp;
 using PixelsorterClassLib.Core;
 using SixLabors.ImageSharp.PixelFormats;
-using Xunit;
 
 namespace Pixelsorter.Tests.ImageTests
 {

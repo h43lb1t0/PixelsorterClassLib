@@ -2,9 +2,6 @@ using NumSharp;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace PixelsorterClassLib.Masks
 {
@@ -17,7 +14,7 @@ namespace PixelsorterClassLib.Masks
     /// non-negative value.</param>
     public record LuminanceMaskOptions : MaskOptions
     {
-        public float ThresholdMultiplier {  get; init; }
+        public float ThresholdMultiplier { get; init; }
 
         public LuminanceMaskOptions(float thresholdMultiplier)
         {
@@ -25,8 +22,8 @@ namespace PixelsorterClassLib.Masks
             ThresholdMultiplier = thresholdMultiplier;
         }
 
-        
-    } 
+
+    }
 
     /// <summary>
     /// Provides a mask based on the luminance values of an image, generating binary masks by thresholding pixel
@@ -82,7 +79,7 @@ namespace PixelsorterClassLib.Masks
         /// <returns>A tuple containing the luminance mask as an NDArray and the inverted mask as an NDArray.</returns>
         private (NDArray mask, NDArray invertedMask) CreateLuminanceMask(Image<L8> image)
         {
-   
+
             image.Mutate(x => x.BinaryThreshold(GetLuminanceThreshold(image)));
 
             var mask = image.Clone(x => x.Invert());

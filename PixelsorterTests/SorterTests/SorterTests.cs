@@ -83,6 +83,40 @@ namespace Pixelsorter.Tests.SorterTests
         }
 
         [Fact]
+        public void Sorter_SortArbitraryAngle_45Degrees_SortsPixelsCorrectly()
+        {
+            var imgData = SorterTestHelpers.CreateUnsortedImageData();
+
+            var sortedImage = Sorter.SortImage(imgData, PixelsorterClassLib.Core.SortBy.Saturation(), SortDirections.ArbitraryAngle, null, 45f);
+
+            var expectedData = np.array([
+                ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.Gray, ..SorterTestHelpers.MidSaturation,
+                ..SorterTestHelpers.Gray, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.Gray,
+                ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.HighSaturation,
+                ..SorterTestHelpers.Gray, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.HighSaturation
+            ]).reshape(4, 4, 3);
+
+            Assert.Equal(expectedData.ToArray<float>(), sortedImage.ToArray<float>());
+        }
+
+        [Fact]
+        public void Sorter_SortArbitraryAngle_135Degrees_SortsPixelsCorrectly()
+        {
+            var imgData = SorterTestHelpers.CreateUnsortedImageData();
+
+            var sortedImage = Sorter.SortImage(imgData, PixelsorterClassLib.Core.SortBy.Saturation(), SortDirections.ArbitraryAngle, null, 135f);
+
+            var expectedData = np.array([
+                ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.Gray, ..SorterTestHelpers.Gray,
+                ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.Gray, ..SorterTestHelpers.Gray,
+                ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.LowSaturation, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation,
+                ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.MidSaturation, ..SorterTestHelpers.HighSaturation, ..SorterTestHelpers.LowSaturation
+            ]).reshape(4, 4, 3);
+
+            Assert.Equal(expectedData.ToArray<float>(), sortedImage.ToArray<float>());
+        }
+
+        [Fact]
         public void Sorter_IntoMask_ExceptionThrown()
         {
             var imgData = SorterTestHelpers.CreateUnsortedImageData();
