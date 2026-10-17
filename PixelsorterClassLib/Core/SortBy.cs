@@ -1,5 +1,5 @@
-﻿using Hsl = SixLabors.ImageSharp.ColorProfiles.Hsl;
-using System.Reflection;
+﻿using System.Reflection;
+using Hsl = SixLabors.ImageSharp.ColorProfiles.Hsl;
 
 namespace PixelsorterClassLib.Core;
 
