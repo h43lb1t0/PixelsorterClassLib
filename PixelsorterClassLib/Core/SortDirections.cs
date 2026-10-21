@@ -14,6 +14,7 @@
         RowRightToLeft,
         ColumnTopToBottom,
         ColumnBottomToTop,
-        IntoMask
+        IntoMask,
+        ArbitraryAngle
     }
 }
