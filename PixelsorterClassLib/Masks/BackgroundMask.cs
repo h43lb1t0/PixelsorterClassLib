@@ -38,6 +38,13 @@ namespace PixelsorterClassLib.Masks
     /// model inference.</remarks>
     public class BackgroundMask : Mask<BackgroundMaskOptions>
     {
+        static BackgroundMask()
+        {
+            // Disables ONNX Runtime telemetry
+            Environment.SetEnvironmentVariable("ORT_DISABLE_TELEMETRY", "1");
+            OrtEnv.Instance().DisableTelemetryEvents();
+        }
+
         private static InferenceSession? _session;
         private static string? _inputName;
         private static string? _outputName;
