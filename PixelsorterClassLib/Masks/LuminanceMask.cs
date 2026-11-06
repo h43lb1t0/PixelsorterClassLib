@@ -10,12 +10,15 @@ namespace PixelsorterClassLib.Masks
     /// <summary>
     /// Represents options for generating a mask based on luminance values, using a specified threshold multiplier.
     /// </summary>
-    /// <param name="ThresholdMultiplier">The multiplier applied to the luminance threshold to determine which pixels are included in the mask. Must be a
-    /// non-negative value.</param>
     public record LuminanceMaskOptions : MaskOptions
     {
         public float ThresholdMultiplier { get; init; }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="LuminanceMaskOptions"/> class.
+        /// </summary>
+        /// <param name="thresholdMultiplier">The multiplier applied to the luminance threshold. Must be greater than or equal to 0 and less than 1.</param>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="thresholdMultiplier"/> is less than 0 or greater than or equal to 1.</exception>
         public LuminanceMaskOptions(float thresholdMultiplier)
         {
             if (thresholdMultiplier < 0 || thresholdMultiplier >= 1) throw new ArgumentException("ThresholdMultiplier needs to be betwenn range (0, 1] (0,100 %)");
