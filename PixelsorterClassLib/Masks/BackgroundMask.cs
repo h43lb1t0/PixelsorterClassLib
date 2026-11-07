@@ -53,7 +53,7 @@ namespace PixelsorterClassLib.Masks
         private static string? _inputName;
         private static string? _outputName;
         private float _confidenceThreshold = 0.5f;
-        private static readonly object _sessionLock = new();
+        private static readonly Lock _sessionLock = new();
         private const int ModelInputSize = 1024;
         private static readonly string ModelCachePath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
