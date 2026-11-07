@@ -12,19 +12,23 @@ namespace PixelsorterClassLib.Masks
     /// <summary>
     /// Represents options for configuring a background mask with a specified fade width.
     /// </summary>
-    /// <param name="FadeWidth">The width, in pixels, over which the background mask fades. Must be a non-negative integer.</param>
-    /// <param name="ConfidenceThreshold"> The confidence threshold for the model to choose what is Background and what is foreground. </param>
     public record BackgroundMaskOptions : MaskOptions
     {
         public int FadeWidth { get; init; }
         public float ConfidenceThreshold { get; init; }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="BackgroundMaskOptions"/> record.
+        /// </summary>
+        /// <param name="fadeWidth">The width, in pixels, over which the background mask fades. Must be a non-negative integer.</param>
+        /// <param name="confidenceThreshold">The confidence threshold for the model to choose what is background and what is foreground.</param>
         public BackgroundMaskOptions(int fadeWidth, float confidenceThreshold = 0.5f)
         {
             ArgumentOutOfRangeException.ThrowIfNegative(fadeWidth);
             FadeWidth = fadeWidth;
 
-            if (confidenceThreshold <= 0 || confidenceThreshold >= 1) throw new ArgumentOutOfRangeException("ConfidenceThreshold must be in range (0,1)");
+            ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(confidenceThreshold, 0f);
+            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(confidenceThreshold, 1f);
             ConfidenceThreshold = confidenceThreshold;
         }
     }
@@ -49,7 +53,7 @@ namespace PixelsorterClassLib.Masks
         private static string? _inputName;
         private static string? _outputName;
         private float _confidenceThreshold = 0.5f;
-        private static readonly object _sessionLock = new();
+        private static readonly Lock _sessionLock = new();
         private const int ModelInputSize = 1024;
         private static readonly string ModelCachePath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -97,7 +101,7 @@ namespace PixelsorterClassLib.Masks
             return true;
         }
 
-        private Image<Rgba32> LoadImage(String inputImagePath)
+        private static Image<Rgba32> LoadImage(String inputImagePath)
         {
             var image = Image.Load<Rgba32>(inputImagePath) ?? throw new InvalidOperationException("Failed to load the input image.");
             image.Mutate(x => x.AutoOrient());
@@ -143,11 +147,11 @@ namespace PixelsorterClassLib.Masks
         /// the expected input format for certain models.</remarks>
         /// <param name="image">The Image instance containing the image data to be processed. The image must have dimensions equal to
         /// ModelInputSize by ModelInputSize.</param>
-        /// <returns>A DenseTensor<float> containing the normalized RGB pixel values, structured as [1, 3, ModelInputSize,
+        /// <returns>A <see cref="DenseTensor{T}"/> containing the normalized RGB pixel values, structured as [1, 3, ModelInputSize,
         /// ModelInputSize]. Each channel value is normalized to the range [-0.5, 0.5].</returns>
-        private DenseTensor<float> ExtractPixels(Image<Rgba32> image)
+        private static DenseTensor<float> ExtractPixels(Image<Rgba32> image)
         {
-            var tensor = new DenseTensor<float>(new[] { 1, 3, ModelInputSize, ModelInputSize });
+            var tensor = new DenseTensor<float>([1, 3, ModelInputSize, ModelInputSize]);
 
             image.ProcessPixelRows(accessor =>
             {
@@ -176,7 +180,7 @@ namespace PixelsorterClassLib.Masks
         /// <param name="maskTensor">A tensor of floating-point values from which to calculate the minimum and maximum values. The tensor must
         /// not be empty.</param>
         /// <returns>A tuple containing the minimum and maximum float values found in the mask tensor.</returns>
-        private (float min, float max) GetMaskRange(Tensor<float> maskTensor)
+        private static (float min, float max) GetMaskRange(Tensor<float> maskTensor)
         {
             float min = float.MaxValue;
             float max = float.MinValue;
@@ -199,7 +203,7 @@ namespace PixelsorterClassLib.Masks
         /// <param name="maxValue">The maximum value of the normalization range. Must be greater than minValue for proper normalization;
         /// otherwise, value is clamped directly to [0, 1].</param>
         /// <returns>A floating-point value representing the normalized input, constrained to the range [0, 1].</returns>
-        private float NormalizeMaskValue(float value, float minValue, float maxValue)
+        private static float NormalizeMaskValue(float value, float minValue, float maxValue)
         {
             if (maxValue > minValue)
             {
@@ -216,7 +220,7 @@ namespace PixelsorterClassLib.Masks
         /// <param name="x">The column index of the mask value to retrieve. Must be within the bounds of the tensor's dimensions.</param>
         /// <returns>The mask value at the specified coordinates as a floating-point number.</returns>
         /// <exception cref="InvalidOperationException">Thrown if the rank of the mask tensor is not 2, 3, or 4.</exception>
-        private float GetMaskValue(Tensor<float> maskTensor, int y, int x)
+        private static float GetMaskValue(Tensor<float> maskTensor, int y, int x)
         {
             var rank = maskTensor.Rank;
             return rank switch
@@ -242,7 +246,7 @@ namespace PixelsorterClassLib.Masks
         /// <param name="maxValue">The maximum value for normalizing the mask values.</param>
         /// <returns>The interpolated mask value at the specified normalized coordinates, normalized between the provided minimum
         /// and maximum values.</returns>
-        private float GetMaskValueBilinear(Tensor<float> maskTensor, int maskHeight, int maskWidth, float normalizedY, float normalizedX, float minValue, float maxValue)
+        private static float GetMaskValueBilinear(Tensor<float> maskTensor, int maskHeight, int maskWidth, float normalizedY, float normalizedX, float minValue, float maxValue)
         {
             float fy = normalizedY * (maskHeight - 1);
             float fx = normalizedX * (maskWidth - 1);
@@ -278,7 +282,7 @@ namespace PixelsorterClassLib.Masks
         /// bitmap's borders.</param>
         /// <returns>A new Image containing the mask with faded edges, where values are adjusted to create
         /// a smooth transition.</returns>
-        private Image<L8> FadeEgdes(Image<L8> maskImage, int fadeWidth)
+        private static Image<L8> FadeEgdes(Image<L8> maskImage, int fadeWidth)
         {
             var finalMask = maskImage.Clone();
             finalMask.Mutate(x => x.GaussianBlur(fadeWidth));
@@ -329,7 +333,7 @@ namespace PixelsorterClassLib.Masks
         /// <param name="inputImage">The image from which the mask is generated. This parameter must not be null.</param>
         /// <param name="fadeWidth">The width, in pixels, of the fade effect applied to the edges of the mask. Specify a value greater than zero
         /// to enable edge fading.</param>
-        /// <returns>A tuple containing the generated mask and inverted mask as Image<L8>, with the same dimensions as the input image.</returns>
+        /// <returns>A tuple containing the generated mask and inverted mask as <see cref="Image{L8}"/>, with the same dimensions as the input image.</returns>
         /// <exception cref="InvalidOperationException">Thrown when the input bitmap cannot be resized or if the output tensor from the model has an unexpected
         /// shape.</exception>
         private (Image<L8> mask, Image<L8> invertedMask) CreateMask(Image<Rgba32> inputImage, int fadeWidth)

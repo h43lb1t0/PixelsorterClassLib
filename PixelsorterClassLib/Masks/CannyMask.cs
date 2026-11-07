@@ -10,12 +10,15 @@ namespace PixelsorterClassLib.Masks
     /// <summary>
     /// Specifies options for generating a mask using the Canny edge detection algorithm.
     /// </summary>
-    /// <param name="Threshold">The threshold value used to determine edge sensitivity. Higher values result in fewer detected edges. Must be
-    /// non-negative.</param>
     public record CannyMaskOptions : MaskOptions
     {
         public float Threshold { get; init; }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="CannyMaskOptions"/> class. 
+        /// </summary>
+        /// <param name="threshold">The edge detection threshold, in the range [0, 1).</param>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="threshold"/> is less than 0 or greater than or equal to 1.</exception>
         public CannyMaskOptions(float threshold)
         {
             if (threshold < 0 || threshold >= 1) throw new ArgumentException("Threshold needs to be betwenn range (0, 1] (0,100 %)");
