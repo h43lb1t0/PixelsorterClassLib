@@ -287,16 +287,10 @@ public class Sorter
     /// <summary>
     /// Struct to hold pixel data and sort value for efficient sorting
     /// </summary>
-    private readonly struct PixelSortData : IComparable<PixelSortData>
+    private readonly struct PixelSortData(int sourceOffset, float sortValue) : IComparable<PixelSortData>
     {
-        public readonly int SourceOffset;
-        public readonly float SortValue;
-
-        public PixelSortData(int sourceOffset, float sortValue)
-        {
-            SourceOffset = sourceOffset;
-            SortValue = sortValue;
-        }
+        public readonly int SourceOffset = sourceOffset;
+        public readonly float SortValue = sortValue;
 
         public int CompareTo(PixelSortData other)
         {
@@ -350,7 +344,7 @@ public class Sorter
 
         for (int i = 0; i < angleBuckets; i++)
         {
-            buckets[i] = new List<(int X, int Y, float Dist)>();
+            buckets[i] = [];
         }
 
         for (int y = 0; y < height; y++)
@@ -386,13 +380,13 @@ public class Sorter
 
                 for (int j = bucket.Count - 1; j >= 0; j--)
                 {
-                    var point = bucket[j];
-                    int maskIndex = (point.Y * width + point.X) * maskChannels;
+                    var (X, Y, Dist) = bucket[j];
+                    int maskIndex = (Y * width + X) * maskChannels;
                     bool insideMask = maskPtr[maskIndex] >= 128;
 
                     if (insideMask)
                     {
-                        int pixelOffset = (point.Y * width + point.X) * channels;
+                        int pixelOffset = (Y * width + X) * channels;
                         float h = srcPtr[pixelOffset];
                         float s = srcPtr[pixelOffset + 1];
                         float l = srcPtr[pixelOffset + 2];

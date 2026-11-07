@@ -107,9 +107,7 @@ public class SortBy
     /// <remarks>Each element represents the weight for the corresponding hue angle, calculated using a
     /// cosine-based formula. The array can be used to efficiently access hue weights without recalculating them at
     /// runtime.</remarks>
-    private static readonly float[] HueWeights = Enumerable.Range(0, 361)
-    .Select(h => 0.675f + 0.325f * (float)Math.Cos(((h - 60f) / 360f) * 2.0 * Math.PI))
-    .ToArray();
+    private static readonly float[] HueWeights = [.. Enumerable.Range(0, 361).Select(h => 0.675f + 0.325f * (float)Math.Cos(((h - 60f) / 360f) * 2.0 * Math.PI))];
 
 
     /// <summary>
@@ -149,8 +147,9 @@ public class SortBy
 
         foreach (var method in methods)
         {
-            var func = (Func<Hsl, float>)method.Invoke(null, null);
-            result[method.Name] = func;
+            var func = method.Invoke(null, null) as Func<Hsl, float>;
+            if (func is not null)
+                result[method.Name] = func;
         }
 
         return result;
