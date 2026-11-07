@@ -27,7 +27,8 @@ namespace PixelsorterClassLib.Masks
             ArgumentOutOfRangeException.ThrowIfNegative(fadeWidth);
             FadeWidth = fadeWidth;
 
-            if (confidenceThreshold <= 0 || confidenceThreshold >= 1) throw new ArgumentOutOfRangeException("ConfidenceThreshold must be in range (0,1)");
+            ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(confidenceThreshold, 0f);
+            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(confidenceThreshold, 1f);
             ConfidenceThreshold = confidenceThreshold;
         }
     }
