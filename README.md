@@ -1,6 +1,6 @@
 # PixelsorterClassLib
 
-PixelsorterClassLib is a .NET class library designed for creating advanced pixel sorting effects. It provides extensive control over the sorting criteria and directions, and it even features on-device machine learning capabilities to automatically generate masks for selective sorting.
+PixelsorterClassLib is a .NET-11 class library designed for creating advanced pixel sorting effects. It provides extensive control over the sorting criteria and directions, and it even features on-device machine learning capabilities to automatically generate masks for selective sorting.
 
 ## Features
 
